@@ -1,0 +1,24 @@
+# Dependency folders
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- DATA FOLDER LOGIC ---
+# 1. Ignore the entire data directory
+data/
+
+# 2. But allow the data directory to be scanned (required for negation)
+!data/
+
+# 3. Ignore all files inside data
+data/*
+
+# 4. Do NOT ignore names.json
+!data/names.json

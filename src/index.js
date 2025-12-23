@@ -37,12 +37,12 @@ app.get('/api/sensors', (req, res) => {
 app.post('/api/temp', (req, res) => {
     const { temperature, address } = req.body;
     const filePath = path.join(__dirname, DATA_DIR, `${address}.json`);
-    console.log(req.body);
+    //console.log(req.body);
     if (temperature === undefined) return res.status(400).send('No temp provided');
     const timestamp = new Date().toLocaleString();
     console.log(`[${timestamp}] Temperature Received: ${temperature}°C`);
 
-    console.log(filePath);
+    //console.log(filePath);
     let history = loadData(filePath);
     
     // Add new data with timestamp
@@ -58,6 +58,7 @@ app.post('/api/temp', (req, res) => {
     res.sendStatus(200);
 });
 
+//retrieves the most recent upload from the requested sensor
 app.get('/api/last', (req,res) => {
     const sensorId = req.query.id; // e.g. "28-00000xxxxxxx"
     const filePath = path.join(__dirname, DATA_DIR, `${sensorId}.json`);
@@ -70,7 +71,7 @@ app.get('/api/last', (req,res) => {
     res.json(last_record); // Usually better to return the whole object
 })
 
-// API for Web Page to GET data
+// Returns all data for the selected sensor
 app.get('/api/history', (req, res) => {
     const sensorId = req.query.id; // e.g. "28-00000xxxxxxx"
     const filePath = path.join(__dirname, DATA_DIR, `${sensorId}.json`);
