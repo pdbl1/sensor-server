@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Temp Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container { position: relative; height:40vh; width:80vw; margin: auto; }
+    </style>
+</head>
+<body>
+
+<div id="data-container">Select a sensor to see data</div>
+
+    <h3 style="text-align: center;">Temperature History</h3>
+    <div id="data-container">Loading data...</div>
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        async function updateChart() {
+            console.log("Attempting to fetch data...");
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                console.log("Data received:", data);
+
+                if (data.length === 0) {
+                    console.warn("No data found in temp_data.json");
+                    return;
+                }
+
+                const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
+                const values = data.map(entry => entry.v);
+
+                const ctx = document.getElementById('myChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Temperature (°C)',
+                            data: values,
+                            borderColor: '#3e95cd',
+                            backgroundColor: 'rgba(62, 149, 205, 0.2)',
+                            fill: origin,
+                            tension: 0.3,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Failed to update chart:", error);
+            }
+        }
+
+        // Run the function after the page is fully loaded
+        window.onload = updateChart;
+    </script>
+
+    <script>
+        async function fetchLastData() {
+            const container = document.getElementById('data-container');
+
+            try {
+                // 1. Fetch data from the endpoint
+                const response = await fetch('/api/last');
+
+                // Check if the response is okay (status 200-299)
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 2. Parse the JSON body
+                const data = await response.json();
+
+                // 3. Update the HTML content
+                // data.t is the timestamp, data.v is the value
+                container.innerHTML = `
+                    <p><strong>Latest Sensor Data:  Time:</strong> ${new Date(data.t).toLocaleString()}
+                    <strong>Temperatur:</strong> ${data.v}</p>
+                `;
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                container.innerHTML = `<p class="error">Failed to load data: ${error.message}</p>`;
+            }
+        }
+
+        // Call the function on page load
+        fetchLastData();
+        
+        // Optional: Refresh the data every 30 seconds
+        // setInterval(fetchLastData, 30000);
+    </script>
+
+
+
+</body>
+</html>

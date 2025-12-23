@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Temp Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container { position: relative; height:40vh; width:80vw; margin: auto; }
+    </style>
+</head>
+<body>
+
+    <label for="sensor-select">Choose a sensor:</label>
+    <select id="sensor-select">
+        <option>Loading sensors...</option>
+    </select>
+
+    <!-- <div id="data-container">Loading data...</div> -->
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div id="hd" style="text-align: center;">Temperature History</div>
+    
+    <div class="card">
+    <button onclick="toggleAdmin()">Toggle Name Editor</button>
+    
+    <div id="admin-panel" style="display:none; margin-top: 20px;">
+        <h4>Edit Sensor Names</h4>
+        <div id="name-inputs"></div>
+        <button onclick="saveNames()" style="margin-top:10px; background: #28a745; color: white; border: none; padding: 10px;">
+            Save All Names
+        </button>
+        <span id="save-status"></span>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+
+</body>
+</html>
