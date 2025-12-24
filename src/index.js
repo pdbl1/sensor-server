@@ -27,7 +27,8 @@ app.get('/api/sensors', (req, res) => {
         // Filter for .json files and remove the extension for the ID
         const sensors = files
             .filter(file => file.endsWith('.json'))
-            .map(file => file.replace('.json', ''));
+            .map(file => file.replace('.json', ''))
+            .filter(file => file !== "names", )
             
         res.json(sensors);
     });
@@ -40,7 +41,7 @@ app.post('/api/temp', (req, res) => {
     //console.log(req.body);
     if (temperature === undefined) return res.status(400).send('No temp provided');
     const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] Temperature Received: ${temperature}°C`);
+    console.log(`[${timestamp}] Received Data: Temperature ${temperature}°C Address: ${address}`);
 
     //console.log(filePath);
     let history = loadData(filePath);
@@ -54,7 +55,7 @@ app.post('/api/temp', (req, res) => {
     }
 
     saveData(history, filePath);
-    console.log(`Stored: ${temperature}°C. Total records: ${history.length}`);
+    //console.log(`Stored: ${temperature}°C. Total records: ${history.length}`);
     res.sendStatus(200);
 });
 
@@ -78,7 +79,7 @@ app.get('/api/history', (req, res) => {
     console.log("/api/history", filePath);
     res.json(loadData(filePath));
 });
-
+//get the file names from names.json
 app.get('/api/names', (req, res) => {
     const filePath = path.join(__dirname, DATA_DIR, 'names.json');
     

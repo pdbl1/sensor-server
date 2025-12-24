@@ -5,7 +5,25 @@ let myChart = null;
 const selector = document.getElementById('sensor-select');
 const container = document.getElementById('hd');
 let sensorNames = {}; // Start empty, will be filled from server
+const defaultUnit = "F";
+let unitSym = "°F";
 
+function changeUnits() {
+    const el = document.getElementById('units');
+    let unit = localStorage.getItem("unit") || defaultUnit;
+    if (unit === "C") {
+        unit = "F";
+        el.innerHTML = 'Fahrenheit';
+        unitSym = "°C";
+    } else {
+        unit = "C";
+        el.innerHTML = 'Celsius';
+        unitSym = "°F"
+    }
+    localStorage.setItem("unit", unit);
+    let senId = localStorage.getItem("selectedSensor");
+    refreshDashboard(senId);
+}
 
 async function loadSensorList() {
     try {
@@ -54,31 +72,36 @@ async function refreshDashboard(sensorId) {
             container.innerHTML = `<h3>${displayName}</h3><p>No data recorded.</p>`;
             return;
         }
-
         const latest = data[data.length - 1];
         
         // Find Min/Max
         const values = data.map(entry => entry.v);
-        const min = Math.min(...values);
-        const max = Math.max(...values);
+        let unit = localStorage.getItem("unit") || defaultUnit;
+        const displayValues = values.map(entry => {
+            if (unit === "F"){
+                return (entry *9/5) + 32;
+            } else return entry;
+        });
+        const min = Math.min(...displayValues).toFixed(2);
+        const max = Math.max(...displayValues).toFixed(2);
 
         container.innerHTML = `
             <p><strong>Last Update:</strong> ${new Date(latest.t).toLocaleString()}
-            <strong>Temperature:</strong> <span style=color: #3e95cd;">${latest.v}°C</span>
+            <strong>Temperature:</strong> <span style=color: #3e95cd;">${latest.v}${unitSym}</span>
             <span style="color: #666; font-size: 0.9em;">
-                Min: ${min}°C | Max: ${max}°C
+                Min: ${min}${unitSym} | Max: ${max}${unitSym}
             </span></p>
         `;
-
-        updateChart(data, displayName);
+        const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
+        updateChart(labels, displayValues, displayName);
     } catch (error) {
         console.error("Failed to refresh dashboard:", error);
     }
 }
 
-function updateChart(data, sensorId) {
-    const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
-    const values = data.map(entry => entry.v);
+function updateChart(labels, values, sensorId) {
+    //const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
+    //const values = data.map(entry => entry.v);
     const ctx = document.getElementById('myChart').getContext('2d');
 
     if (myChart) { myChart.destroy(); }
