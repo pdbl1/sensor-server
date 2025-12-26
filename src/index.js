@@ -1,6 +1,7 @@
 const express = require('express');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
+const { json } = require('stream/consumers');
 const app = express();
 const port = 8080;
 
@@ -11,31 +12,9 @@ app.use(express.static('public')); // Serve your HTML from a 'public' folder
 const DATA_DIR = "../data"
 const MAX_RECORDS = 1440; // 5 days at 5-min intervals
 
-// Helper to save data
-const saveData = (data,fn) => fs.writeFileSync(fn, JSON.stringify(data));
-// Helper to load data
-const loadData = (fn) => {
-    if (!fs.existsSync(fn)) return [];
-    return JSON.parse(fs.readFileSync(fn));
-};
-
-app.get('/api/sensors', (req, res) => {
-    const dataFolder = "./data"; // folder where your files are
-    fs.readdir(dataFolder, (err, files) => {
-        if (err) return res.status(500).json({ error: 'Folder not found' });
-        
-        // Filter for .json files and remove the extension for the ID
-        const sensors = files
-            .filter(file => file.endsWith('.json'))
-            .map(file => file.replace('.json', ''))
-            .filter(file => file !== "names", )
-            
-        res.json(sensors);
-    });
-});
-
+//re-write to use async file operations
 // API for ESP32 to POST data
-app.post('/api/temp', (req, res) => {
+app.post('/api/temp', async (req, res) => {
     const { temperature, address } = req.body;
     const filePath = path.join(__dirname, DATA_DIR, `${address}.json`);
     //console.log(req.body);
@@ -43,68 +22,107 @@ app.post('/api/temp', (req, res) => {
     const timestamp = new Date().toLocaleString();
     console.log(`[${timestamp}] Received Data: Temperature ${temperature}°C Address: ${address}`);
 
-    //console.log(filePath);
-    let history = loadData(filePath);
-    
-    // Add new data with timestamp
-    history.push({ t: new Date().toISOString(), v: temperature });
-
-    // Keep only the last 5 days
-    if (history.length > MAX_RECORDS) {
-        history = history.slice(history.length - MAX_RECORDS);
+    try{
+        let history = [];
+        try{
+            const rawData = await fs.readFile(filePath, 'utf8');
+            history = JSON.parse(rawData);
+        } catch(err){
+            // If file doesn't exist, start with empty array
+            console.log("Adding new sensor: ",address);
+            history = [];
+        }
+        //process data, Add new data with timestamp
+        history.push({t: new Date().toISOString(), v: temperature});
+        if (history.length > MAX_RECORDS) {
+            history = history.slice(history.length - MAX_RECORDS);
+        }
+        await fs.writeFile(filePath, JSON.stringify(history));
+        res.sendStatus(200);
+    } catch (err) {
+        console.log("Storage error:\n", err);
+        res.status(500).send("Internal Server Error could not save file");
     }
-
-    saveData(history, filePath);
-    //console.log(`Stored: ${temperature}°C. Total records: ${history.length}`);
-    res.sendStatus(200);
 });
 
-//retrieves the most recent upload from the requested sensor
-app.get('/api/last', (req,res) => {
+app.get('/api/sensors', async (req, res) => {
+    const dataFolder = "./data"; 
+    try {
+        // Use the promise-based readdir
+        const files = await fs.readdir(dataFolder);
+
+        const sensors = files
+            .filter(file => file.endsWith('.json'))
+            .map(file => file.replace('.json', ''))
+            .filter(file => file !== "names");
+
+        res.json(sensors);
+    } catch (err) {
+        console.error("Directory read error:", err);
+        res.status(500).json({ error: 'Folder not found or inaccessible' });
+    }
+});
+
+app.get('/api/last', async (req,res) => {
     const sensorId = req.query.id; // e.g. "28-00000xxxxxxx"
     const filePath = path.join(__dirname, DATA_DIR, `${sensorId}.json`);
-    const data = loadData(filePath);
-
-    if (!data || data.length === 0) {
-        return res.status(404).json({ error: "No data found" });
+    try{
+        const rawData = await fs.readFile(filePath, 'utf8');
+        const data = JSON.parse(rawData);
+        if (data.length === 0){
+            return res.status(404).json({ error: "No data found for this sensor" });
+        }
+        const last_record = data[data.length - 1];
+        res.json(last_record);
+    } catch (err) {
+        console.error("get last error:", err);
+        return res.status(404).json({ error: `sensor not found ${sensorId}` });
     }
-    const last_record = data[data.length - 1];
-    res.json(last_record); // Usually better to return the whole object
-})
+
+});
 
 // Returns all data for the selected sensor
-app.get('/api/history', (req, res) => {
+app.get('/api/history', async (req, res) => {
     const sensorId = req.query.id; // e.g. "28-00000xxxxxxx"
     const filePath = path.join(__dirname, DATA_DIR, `${sensorId}.json`);
-    console.log("/api/history", filePath);
-    res.json(loadData(filePath));
-});
-//get the file names from names.json
-app.get('/api/names', (req, res) => {
-    const filePath = path.join(__dirname, DATA_DIR, 'names.json');
-    
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-            // If file doesn't exist yet, return an empty object
-            return res.json({});
-        }
-        res.json(JSON.parse(data));
-    });
+
+    try{
+        const rawData = await fs.readFile(filePath, 'utf-8');
+        const data = JSON.parse(rawData); // Use PARSE, not stringify
+        return res.json(data);
+    }catch(err) {
+        console.error("get history error:", err);
+        return res.status(404).json({ error: `sensor not found ${sensorId} or corrupted file` });
+    }
 });
 
-app.post('/api/names', (req, res) => {
+//get the file names from names.json
+app.get('/api/names', async (req, res) => {
+    const filePath = path.join(__dirname, DATA_DIR, 'names.json');
+    
+    try{
+        const rawData = await fs.readFile(filePath, 'utf8');
+        const data = JSON.parse(rawData);
+        return res.json(data);
+    }catch(err) {
+        console.error("get names error:", err);
+        return res.json({});
+    }
+});
+
+app.post('/api/names', async (req, res) => {
     const filePath = path.join(__dirname, DATA_DIR, 'names.json');
     const newNames = req.body;
 
-    fs.writeFile(filePath, JSON.stringify(newNames, null, 2), (err) => {
-        if (err) {
-            console.error("Save error:", err);
-            return res.status(500).send("Could not save names.");
-        }
-        res.send("Names updated successfully!");
-    });
+    try{
+        const data = JSON.stringify(newNames, null, 2)
+        await fs.writeFile(filePath, data, 'utf8');
+        return res.status(200).send("Names saved successfully");
+    }catch(err) {
+        console.error("Save names error:", err);
+        return res.status(500).send("Could not save names.");
+    }
 });
-
 
 app.listen(port, '0.0.0.0', () => {
     console.log(`Server running at http://192.168.50.1:${port}`);
