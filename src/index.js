@@ -15,12 +15,31 @@ const MAX_RECORDS = 1440; // 5 days at 5-min intervals
 //re-write to use async file operations
 // API for ESP32 to POST data
 app.post('/api/temp', async (req, res) => {
-    const { temperature, address } = req.body;
+    let { temperature, address, time: clientTimestamp } = req.body;
     const filePath = path.join(__dirname, DATA_DIR, `${address}.json`);
     //console.log(req.body);
     if (temperature === undefined) return res.status(400).send('No temp provided');
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] Received Data: Temperature ${temperature}°C Address: ${address}`);
+
+    // 1. Sanitize the timestamp (remove whitespace/newlines from ESP32)
+    if (typeof clientTimestamp === 'string') {
+        clientTimestamp = clientTimestamp.trim();
+    }
+    const parsedDate = new Date(clientTimestamp);
+    const isValidDate = clientTimestamp && !isNaN(parsedDate.getTime());
+    let finalTimestamp;
+    let sourceStr;
+    if (isValidDate){
+        finalTimestamp = parsedDate.toISOString();
+        //console.log("Date from ESP: ", finalTimestamp);
+        sourceStr = "ESP"
+    } else {
+        //console.warn(`Invalid date ${clientTimestamp} from ESP.  Used Server Time `);
+        finalTimestamp = new Date().toISOString();
+        sourceStr = "Server"
+    }
+    
+    //const timestamp = new Date().toLocaleString();
+    console.log(`${sourceStr}: [${finalTimestamp}] Temperature ${temperature}°C Address: ${address}`);
 
     try{
         let history = [];
@@ -33,7 +52,8 @@ app.post('/api/temp', async (req, res) => {
             history = [];
         }
         //process data, Add new data with timestamp
-        history.push({t: new Date().toISOString(), v: temperature});
+        //history.push({t: new Date().toISOString(), v: temperature});
+        history.push({t: finalTimestamp, v: temperature});
         if (history.length > MAX_RECORDS) {
             history = history.slice(history.length - MAX_RECORDS);
         }

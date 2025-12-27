@@ -72,11 +72,14 @@ async function refreshDashboard(sensorId) {
             container.innerHTML = `<h3>${displayName}</h3><p>No data recorded.</p>`;
             return;
         }
-        const latest = data[data.length - 1];
+        let latest = data[data.length - 1];
         
         // Find Min/Max
         const values = data.map(entry => entry.v);
         let unit = localStorage.getItem("unit") || defaultUnit;
+        if (unit === 'F') {
+            latest.v = latest.v *9/5 +32;
+        }
         const displayValues = values.map(entry => {
             if (unit === "F"){
                 return (entry *9/5) + 32;
@@ -87,7 +90,7 @@ async function refreshDashboard(sensorId) {
 
         container.innerHTML = `
             <p><strong>Last Update:</strong> ${new Date(latest.t).toLocaleString()}
-            <strong>Temperature:</strong> <span style=color: #3e95cd;">${latest.v}${unitSym}</span>
+            <strong>Temperature:</strong> <span style=color: #3e95cd;">${latest.v.toFixed(2)}${unitSym}</span>
             <span style="color: #666; font-size: 0.9em;">
                 Min: ${min}${unitSym} | Max: ${max}${unitSym}
             </span></p>
