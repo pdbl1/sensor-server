@@ -7,6 +7,7 @@ const container = document.getElementById('hd');
 let sensorNames = {}; // Start empty, will be filled from server
 const defaultUnit = "F";
 let unitSym = "°F";
+const refreshDashboard = refreshDashboardScatter;
 
 function changeUnits() {
     const el = document.getElementById('units');
@@ -14,11 +15,11 @@ function changeUnits() {
     if (unit === "C") {
         unit = "F";
         el.innerHTML = 'Fahrenheit';
-        unitSym = "°C";
+        unitSym = "°F";
     } else {
         unit = "C";
         el.innerHTML = 'Celsius';
-        unitSym = "°F"
+        unitSym = "°C"
     }
     localStorage.setItem("unit", unit);
     let senId = localStorage.getItem("selectedSensor");
@@ -60,7 +61,7 @@ async function loadSensorList() {
     }
 }
 
-async function refreshDashboard(sensorId) {
+async function refreshDashboardLine(sensorId) {
     try {
         const response = await fetch(`/api/history?id=${sensorId}`);
         const data = await response.json();
@@ -76,6 +77,7 @@ async function refreshDashboard(sensorId) {
         
         // Find Min/Max
         const values = data.map(entry => entry.v);
+        changeUnits();
         let unit = localStorage.getItem("unit") || defaultUnit;
         if (unit === 'F') {
             latest.v = latest.v *9/5 +32;
@@ -96,13 +98,13 @@ async function refreshDashboard(sensorId) {
             </span></p>
         `;
         const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
-        updateChart(labels, displayValues, displayName);
+        updateChartLine(labels, displayValues, displayName);
     } catch (error) {
         console.error("Failed to refresh dashboard:", error);
     }
 }
 
-function updateChart(labels, values, sensorId) {
+function updateChartLine(labels, values, sensorId) {
     //const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
     //const values = data.map(entry => entry.v);
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -134,7 +136,17 @@ selector.addEventListener('change', (e) =>{
     localStorage.setItem('selectedSensor', selectedId);
     refreshDashboard(selectedId);
 }); 
-window.onload = loadSensorList;
+
+function init() {
+    loadSensorList();
+    let unit = localStorage.getItem('unit');
+    if (unit) {
+        console.log('Key exists and has a value!');
+    } else {
+        localStorage.setItem("unit", defaultUnit);
+    }
+}
+window.onload = init;
 
 // setInterval(() => {
 //     if (selector.value) refreshDashboard(selector.value);
@@ -205,4 +217,89 @@ async function saveNames() {
         status.textContent = "❌ Error saving.";
         console.error(err);
     }
+}
+
+
+async function refreshDashboardScatter(sensorId) {
+    try {
+        const response = await fetch(`/api/history?id=${sensorId}`);
+        const data = await response.json();
+
+        // Get the name from our global sensorNames object
+        const displayName = sensorNames[sensorId] || sensorId;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `<h3>${displayName}</h3><p>No data recorded.</p>`;
+            return;
+        }
+        let latest = data[data.length - 1];
+        //convert to array of points
+        let unit = localStorage.getItem("unit") || defaultUnit;
+        let min = Infinity;
+        let max = -Infinity;
+        const dataPoints = data.map(el => {
+            let val = el.v;
+            if (unit === "F") {
+                val = (val * 9/5) + 32;
+            }
+            if (val < min) min = val;
+            if (val > max) max = val;
+            
+            // X = Time (Timestamp), Y = Value
+            return { x: new Date(el.t), y: val.toFixed(2) };
+        });
+        const lastTemp = dataPoints[dataPoints.length-1].y;
+
+        container.innerHTML = `
+            <p><strong>Last Update:</strong> ${new Date(latest.t).toLocaleString()}
+            <strong>Temperature:</strong> <span style=color: #3e95cd;">${lastTemp}${unitSym}</span>
+            <span style="color: #666; font-size: 0.9em;">
+                Min: ${min.toFixed(2)}${unitSym} | Max: ${max.toFixed(2)}${unitSym}
+            </span></p>
+        `;
+        
+        updateChartScatter(dataPoints, displayName);
+    } catch (error) {
+        console.error("Failed to refresh dashboard:", error);
+    }
+}
+
+function updateChartScatter(dataPoints, sensorId) {
+    //const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
+    //const values = data.map(entry => entry.v);
+    const ctx = document.getElementById('myChart').getContext('2d');
+
+    if (myChart) { myChart.destroy(); }
+
+    myChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: sensorId,
+                data: dataPoints,
+                backgroundColor: 'rgba(62, 149, 205, 0.5)',
+                borderColor: '#3e95cd',
+            }]
+        },
+
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: 'time', // Requires date-fns or moment adapter
+                    time: { unit: 'minute',
+                            displayFormats: {
+                               minute: 'MM/dd HH:mm',
+                                hour: 'MM/dd HH:mm',
+                                day: 'MM/dd'
+                            }
+                    },
+                    title: { display: true, text: 'Time' }
+                },
+                y: {
+                    title: { display: true, text: 'Temperature' }
+                }
+            }
+        }
+    });
 }

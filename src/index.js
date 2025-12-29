@@ -24,18 +24,21 @@ app.post('/api/temp', async (req, res) => {
     if (typeof clientTimestamp === 'string') {
         clientTimestamp = clientTimestamp.trim();
     }
+    const MIN_VALID_YEAR = 2025;
     const parsedDate = new Date(clientTimestamp);
-    const isValidDate = clientTimestamp && !isNaN(parsedDate.getTime());
+    const isValidDate = clientTimestamp && !isNaN(parsedDate.getTime()) && 
+        parsedDate.getFullYear() >= MIN_VALID_YEAR;
     let finalTimestamp;
     let sourceStr;
+    
     if (isValidDate){
         finalTimestamp = parsedDate.toISOString();
         //console.log("Date from ESP: ", finalTimestamp);
-        sourceStr = "ESP"
+        sourceStr = "ESP_"
     } else {
         //console.warn(`Invalid date ${clientTimestamp} from ESP.  Used Server Time `);
         finalTimestamp = new Date().toISOString();
-        sourceStr = "Server"
+        sourceStr = "SRVR"
     }
     
     //const timestamp = new Date().toLocaleString();
