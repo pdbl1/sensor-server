@@ -110,6 +110,9 @@ function updateChartLine(labels, values, sensorId) {
     const ctx = document.getElementById('myChart').getContext('2d');
 
     if (myChart) { myChart.destroy(); }
+    //Chart.register(zoomPlugin);
+    //Chart.register(window['chartjs-plugin-zoom']);
+    //Chart.register(ChartZoom);
 
     myChart = new Chart(ctx, {
         type: 'line',
@@ -126,7 +129,24 @@ function updateChartLine(labels, values, sensorId) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            // plugins: {
+            //     zoom: {
+            //         zoom: {
+            //         wheel: {
+            //             enabled: true, // Enable zooming with mouse wheel
+            //         },
+            //         // pinch: {
+            //         //     enabled: true // Enable pinching on touch screens
+            //         // },
+            //         mode: 'xy', // Allow zooming in both horizontal and vertical directions
+            //         },
+            //         pan: {
+            //         enabled: true, // Allow moving the chart around after zooming
+            //         mode: 'xy',
+            //         }
+            //     }
+            // }
         }
     });
 }

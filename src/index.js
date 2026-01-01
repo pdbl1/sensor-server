@@ -1,7 +1,12 @@
 const express = require('express');
+//const { request } = require('http');
+const https = require('https');
+const http = require('http');
+require('dotenv').config();
 const fs = require('fs').promises;
 const path = require('path');
 const { json } = require('stream/consumers');
+
 const app = express();
 const port = 8080;
 
@@ -11,10 +16,13 @@ app.use(express.static('public')); // Serve your HTML from a 'public' folder
 
 const DATA_DIR = "../data"
 const MAX_RECORDS = 1440; // 5 days at 5-min intervals
+const MAX_FILE_SIZE = 100 * 1024 //100 kB
 
 //re-write to use async file operations
 // API for ESP32 to POST data
+let requestCount = 0;
 app.post('/api/temp', async (req, res) => {
+    requestCount++;
     let { temperature, address, time: clientTimestamp } = req.body;
     const filePath = path.join(__dirname, DATA_DIR, `${address}.jsonl`);
     //console.log(req.body);
@@ -41,16 +49,12 @@ app.post('/api/temp', async (req, res) => {
         finalTimestamp = new Date().toISOString();
         sourceStr = "SRVR"
     }
-    
-    //const timestamp = new Date().toLocaleString();
-    console.log();
-
     try{
         const newRecord = JSON.stringify({t: finalTimestamp, v: temperature}) + '\n';
         await fs.appendFile(filePath, newRecord);
-        console.log(`${sourceStr}: Appended: ${address} [${finalTimestamp}]  ${temperature}`);
+        console.log(`${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${address} ${temperature}`);
         const stats = await fs.stat(filePath);
-        if (stats.size > 102400) { // 100KB
+        if (stats.size > MAX_FILE_SIZE) { 
             const data = await fs.readFile(filePath, 'utf8');
             let lines = data.split('\n').filter(l => l.trim());
             if (lines.length > MAX_RECORDS) {
@@ -244,8 +248,41 @@ app.post('/api/names', async (req, res) => {
     }
 });
 
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server running at http://192.168.50.1:${port}`);
-});
+// app.listen(port, '0.0.0.0', () => {
+//     console.log(`Server running at http://192.168.50.1:${port}`);
+// });
 
+async function startServer() {
+    try {
+        // 1. Wait for both files to read in parallel
+        const [httpsKey, httpsCert] = await Promise.all([
+            fs.readFile(process.env.HTTPS_KEY),
+            fs.readFile(process.env.HTTPS_CERT)
+        ]);
+
+        const httpsOpts = {
+            key: httpsKey,
+            cert: httpsCert
+        };
+
+        // 2. Create and start servers
+        const httpServer = http.createServer(app);
+        const httpsServer = https.createServer(httpsOpts, app);
+
+        httpServer.listen(process.env.HTTPPORT, () => {
+            console.log(`HTTP Server listening on port: ${process.env.HTTPPORT}`);
+        });
+
+        httpsServer.listen(process.env.HTTPSPORT, () => {
+            console.log(`HTTPS Server listening on port: ${process.env.HTTPSPORT}`);
+        });
+
+    } catch (error) {
+        console.error("Failed to start server. Check certificate paths/permissions:");
+        console.error(error);
+        process.exit(1); // Exit if we can't load SSL
+    }
+}
+
+startServer();
 
