@@ -28,6 +28,9 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### added reedEvents v0.01.05 ()
+- modularized temp api routes
+- added route to print reed events to console
 
 ### added plot zoom
 
