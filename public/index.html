@@ -3,9 +3,24 @@
 <head>
     <title>ESP32 Temp Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script>
+        // Register the zoom plugin globally
+        Chart.register(ChartZoom);
+    </script>
+
     <style>
         .chart-container { position: relative; height:40vh; width:80vw; margin: auto; }
+    </style>
+    <style>
+        canvas {
+            touch-action: none;      /* Required for pinch + drag gestures */
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -37,8 +52,11 @@
     <button id="units" onclick="changeUnits()" style="margin-top:10px; background: #28a745; color: white; border: none; padding: 10px;">
         Fahrenheit
     </button>
+    <button id="resetBtn" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
+        Reset View
+    </button>
 
-    <script src="dashboard.js"></script>
+    <script src="sensor/dashboard.js"></script>
 
 </body>
 </html>

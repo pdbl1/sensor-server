@@ -18,6 +18,12 @@ const DATA_DIR = "../data"
 const MAX_RECORDS = 1440; // 5 days at 5-min intervals
 const MAX_FILE_SIZE = 100 * 1024 //100 kB
 
+//avoid caching files on cloudflare
+app.use(['/api', '/sensor'], (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 //re-write to use async file operations
 // API for ESP32 to POST data
 let requestCount = 0;
@@ -25,7 +31,7 @@ app.post('/api/temp', async (req, res) => {
     requestCount++;
     let { temperature, address, time: clientTimestamp } = req.body;
     const filePath = path.join(__dirname, DATA_DIR, `${address}.jsonl`);
-    //console.log(req.body);
+    console.log("Post data:\n",req.body);
     if (temperature === undefined) return res.status(400).send('No temp provided');
     if (address === undefined || address === 'names') return res.status(400).send('Invalid address');
 
@@ -176,8 +182,8 @@ app.get('/api/sensors', async (req, res) => {
         const files = await fs.readdir(dataFolder);
 
         const sensors = files
-            .filter(file => file.endsWith('.json'))
-            .map(file => file.replace('.json', ''))
+            .filter(file => file.endsWith('.jsonl'))
+            .map(file => file.replace('.jsonl', ''))
             .filter(file => file !== "names");
 
         res.json(sensors);

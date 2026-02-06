@@ -9,6 +9,12 @@ const defaultUnit = "F";
 let unitSym = "°F";
 const refreshDashboard = refreshDashboardScatter;
 
+document.getElementById('resetBtn').addEventListener('click', () => {
+    if (myChart) {
+        myChart.resetZoom();
+    }
+});
+
 function changeUnits() {
     const el = document.getElementById('units');
     let unit = localStorage.getItem("unit") || defaultUnit;
@@ -104,7 +110,7 @@ async function refreshDashboardLine(sensorId) {
     }
 }
 
-function updateChartLine(labels, values, sensorId) {
+function updateChartLine_non_scrolling(labels, values, sensorId) {
     //const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
     //const values = data.map(entry => entry.v);
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -130,23 +136,61 @@ function updateChartLine(labels, values, sensorId) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            // plugins: {
-            //     zoom: {
-            //         zoom: {
-            //         wheel: {
-            //             enabled: true, // Enable zooming with mouse wheel
-            //         },
-            //         // pinch: {
-            //         //     enabled: true // Enable pinching on touch screens
-            //         // },
-            //         mode: 'xy', // Allow zooming in both horizontal and vertical directions
-            //         },
-            //         pan: {
-            //         enabled: true, // Allow moving the chart around after zooming
-            //         mode: 'xy',
-            //         }
-            //     }
-            // }
+
+        }
+    });
+}
+
+function updateChartLine(labels, values, sensorId) {
+    const ctx = document.getElementById('myChart').getContext('2d');
+
+    if (myChart) { 
+        myChart.destroy(); 
+    }
+
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `Temperature (${sensorId})`,
+                data: values,
+                borderColor: '#3e95cd',
+                backgroundColor: 'rgba(62, 149, 205, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            scales: {
+                x: {
+                    type: 'time',        // required for date-fns adapter
+                    time: {
+                        unit: 'minute'
+                    }
+                }
+            },
+
+            plugins: {
+                zoom: {
+                    zoom: {
+                        wheel: {
+                            enabled: true   // zoom with mouse wheel
+                        },
+                        pinch: {
+                            enabled: true   // zoom with pinch on touch devices
+                        },
+                        mode: 'x'           // zoom only on X axis
+                    },
+                    pan: {
+                        enabled: true,
+                        mode: 'x'
+                    }
+                }
+            }
         }
     });
 }
@@ -284,7 +328,7 @@ async function refreshDashboardScatter(sensorId) {
     }
 }
 
-function updateChartScatter(dataPoints, sensorId) {
+function updateChartScatter_old(dataPoints, sensorId) {
     //const labels = data.map(entry => new Date(entry.t).toLocaleTimeString());
     //const values = data.map(entry => entry.v);
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -318,6 +362,68 @@ function updateChartScatter(dataPoints, sensorId) {
                 },
                 y: {
                     title: { display: true, text: 'Temperature' }
+                }
+            }
+        }
+    });
+}
+
+function updateChartScatter(dataPoints, sensorId) {
+    const ctx = document.getElementById('myChart').getContext('2d');
+
+    if (myChart) { 
+        myChart.destroy(); 
+    }
+
+    myChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: sensorId,
+                data: dataPoints,
+                backgroundColor: 'rgba(62, 149, 205, 0.5)',
+                borderColor: '#3e95cd',
+            }]
+        },
+
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'nearest',
+                intersect: false,
+                axis: 'x'
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { 
+                        unit: 'minute',
+                        displayFormats: {
+                            minute: 'MM/dd HH:mm',
+                            hour: 'MM/dd HH:mm',
+                            day: 'MM/dd'
+                        }
+                    },
+                    title: { display: true, text: 'Time' }
+                },
+                y: {
+                    title: { display: true, text: 'Temperature' }
+                }
+            },
+            dragData: false,
+            plugins: {
+                zoom: {
+                    zoom: {
+                        wheel: { enabled: true },   // zoom with mouse wheel
+                        pinch: { enabled: true },   // pinch zoom on touch
+                        mode: 'x'                   // zoom only on X axis
+                    },
+                    pan: {
+                        enabled: true,
+                        mode: 'x',                   // drag left/right to scroll
+                        drag: false,
+                        modifierKey: null
+                    }
                 }
             }
         }

@@ -28,4 +28,7 @@ q: Quit and go back to the command line.
 
 ## versions
 
-### 
+
+### added plot zoom
+
+### get https server running (379b45a)
