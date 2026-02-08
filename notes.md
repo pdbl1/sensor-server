@@ -28,6 +28,10 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### refined reedEvents v0.01.05 ()
+- added route to do immediate check of reed switches and serve web page
+- changed main url to sensors/index.html
+
 ### added reedEvents v0.01.05 ()
 - modularized temp api routes
 - added route to print reed events to console

@@ -7,14 +7,14 @@ const fs = require('fs').promises;
 const path = require('path');
 const { json } = require('stream/consumers');
 const createApiRoutes = require('./routes/temp');
-const reedEvents = require('./routes/reedEvents');
+const createReedRoutes = require('./routes/reedEvents');
 
 const app = express();
 const port = 8080;
 
 // Middleware to parse JSON bodies sent by the ESP32
 app.use(express.json());
-app.use(express.static('public')); // Serve your HTML from a 'public' folder
+app.use("/sensors/", express.static('public')); // Serve your HTML from a 'public' folder
 
 //const DATA_DIR = "../data"
 const DATA_DIR = path.join(__dirname, '../data');
@@ -27,8 +27,10 @@ app.use(['/api', '/sensor'], (req, res, next) => {
   next();
 });
 
-app.use('/api', createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
-app.use('/api', reedEvents);
+app.use('/sensors/api', '/api', createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
+//app.use('/api', reedEvents);
+app.use('/sensors/api', '/api', createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
+
 
 async function startServer() {
     try {
