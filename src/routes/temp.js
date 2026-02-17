@@ -4,11 +4,16 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs/promises');
 const path = require('path');
+const { registerSensor } = require('../utils/utils');
+const { sanitizeTimestamp } = require('../utils/utils');
+const { trimFileToMax } = require('../utils/utils');
+
 
 // These must be provided by index.js when mounting the router
 module.exports = function createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }) {
 
     let requestCount = 0;
+    const tempTypes = ["ds18b20", "thermocouple"];
 
     // POST /api/temp
     router.post('/temp', async (req, res) => {
@@ -161,6 +166,103 @@ module.exports = function createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS
             return res.status(500).json({ error: "Could not read sensor directory" });
         }
     });
+
+    //*****************
+    // New routes */
+    /**
+     * post data from a temperature device
+     */
+    router.post('/temp1', async (req, res) => {
+        requestCount++;
+
+        let { esp32, name, temperature, type, time: clientTimestamp } = req.body;
+        // Validation
+        if (!esp32 || typeof esp32 !== 'string') {
+            console.log(`[400] Missing esp32 | req#${requestCount} | body=`, req.body);
+            return res.status(400).send('ESP32 device name required');
+        }
+        if (!name || typeof name !== 'string') {
+            console.log(`[400] Missing name | req#${requestCount} | body=`, req.body);
+            return res.status(400).send('Sensor name required');
+        }
+        if (temperature === undefined) {
+            console.log(`[400] Missing temperature | req#${requestCount} | body=`, req.body);
+            return res.status(400).send('Temperature required');
+        }
+        if (!type || typeof type !== 'string') {
+            console.log(`[400] Missing type | req#${requestCount} | body=`, req.body);
+            return res.status(400).send('Sensor type required');
+        }
+        const safeEsp32 = esp32.trim();
+        const safeName = name.trim();
+        // Register or load sensor metadata
+        const sensorMeta = await registerSensor({
+            esp32: safeEsp32,
+            name: safeName,
+            type
+        });
+        const filePath = path.join(DATA_DIR, sensorMeta.file);
+        // Timestamp sanitization
+        const { timestamp: finalTimestamp, source: sourceStr } = sanitizeTimestamp(clientTimestamp);
+        try {
+            const newRecord = JSON.stringify({
+                t: finalTimestamp,
+                v: temperature,
+                type
+            }) + '\n';
+            await fs.appendFile(filePath, newRecord);
+            console.log(
+                `${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${temperature}`
+            );
+            // Trim file if needed
+            await trimFileToMax(filePath, MAX_FILE_SIZE, MAX_RECORDS);
+            return res.sendStatus(200);
+        } catch (err) {
+            console.log("Storage error:\n", err);
+            return res.status(500).send("Internal Server Error could not save file");
+        }
+    });
+
+    /**
+     * return the sensors.json file list
+     */
+    router.get('/sensors1', async (req, res) => {
+        try {
+            const sensorsPath = path.join(DATA_DIR, `sensors.json`);
+            const sensorListText = await fs.readFile(sensorsPath, "utf-8");
+            const sensorList = JSON.parse(sensorListText);
+            const tempSensorList = sensorList.filter(e => tempTypes.includes(e.type.toLowerCase()));
+            return res.json(tempSensorList);
+        } catch (err) {
+            console.error("get sensors error:", err);
+            return res.status(500).json({ error: "Could not read sensor directory" });
+        }
+    });
+
+    // GET /api/history?id=xxxx
+    router.get('/history1', async (req, res) => {
+        const sensorId = req.query.id;
+        if (sensorId === 'names') {
+            console.log("Invalid sensor ID");
+            return res.status(400).json({ error: "Invalid sensor ID" });
+        }
+        const filePath = path.join(DATA_DIR, `${sensorId}.jsonl`);
+        console.log(filePath);
+        try {
+            const rawData = await fs.readFile(filePath, 'utf-8');
+            const data = rawData
+                .split('\n')
+                .filter(line => line.trim())
+                .slice(-MAX_RECORDS)
+                .map(line => JSON.parse(line));
+
+            return res.json(data);
+        } catch (err) {
+            console.log("get history error:\n", err);
+            return res.status(404).json({ error: "Sensor not found" });
+        }
+    });
+
 
 
     return router;

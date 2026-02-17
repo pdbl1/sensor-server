@@ -27,9 +27,9 @@ app.use(['/api', '/sensor'], (req, res, next) => {
   next();
 });
 
-app.use('/sensors/api', '/api', createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
+app.use(['/sensors/api', '/api'], createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
 //app.use('/api', reedEvents);
-app.use('/sensors/api', '/api', createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
+app.use(['/sensors/api', '/api'], createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS }));
 
 
 async function startServer() {

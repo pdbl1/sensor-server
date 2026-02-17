@@ -28,7 +28,14 @@ q: Quit and go back to the command line.
 
 ## versions
 
-### refined reedEvents v0.01.05 ()
+
+### refactor to use new data format 
+- Added home route
+- temp route now uses new format ESP32 dev_name: Device name rather than address
+- reed route now uses new fommat ESP32 dev_name: name 
+- all sensors written to sensors.json
+
+### refined reedEvents v0.01.05 (83f4e41)
 - added route to do immediate check of reed switches and serve web page
 - changed main url to sensors/index.html
 
