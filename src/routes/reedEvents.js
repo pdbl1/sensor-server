@@ -53,7 +53,10 @@ module.exports = function createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORD
         const sensorMeta = await registerSensor({
             esp32: safeEsp32,
             name: safeName,
-            type
+            type,
+            options: {
+                gpio
+            }
         });
         const filePath = path.join(DATA_DIR, sensorMeta.file);
         // Timestamp sanitization
@@ -63,8 +66,7 @@ module.exports = function createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORD
             const newRecord = JSON.stringify( {
                 t: finalTimestamp,
                 s: status ? 'CLOSED' : 'OPEN',
-                g: gpio,
-                type
+                g: gpio
             }) + '\n';
             // Append event
             await fs.appendFile(filePath, newRecord);

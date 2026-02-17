@@ -8,17 +8,7 @@ async function loadSensorIndex() {
     try {
         const raw = await fs.readFile(path.join(DATA_DIR, "sensors.json"), "utf8");
         let index = JSON.parse(raw);
-
-        // Normalize: convert old object-map format → array
-        if (!Array.isArray(index)) {
-            index = Object.keys(index).map(k => ({
-                id: k,
-                ...index[k]
-            }));
-        }
-
         return index;
-
     } catch (err) {
         // File missing or invalid JSON → start fresh
         return [];
@@ -32,21 +22,17 @@ async function saveSensorIndex(index) {
     );
 }
 
-async function registerSensor({ esp32, name, type }) {
+async function registerSensor({ esp32, name, type, options ={} }) {
     const id = `${esp32}_${name}`;
     const file = `${id}.jsonl`;
-
     let index = await loadSensorIndex();
-
     let existing = index.find(s => s.id === id);
-
     if (!existing) {
-        const newSensor = { id, esp32, name, type, file };
+        const newSensor = { id, esp32, name, type, file, ...options };
         index.push(newSensor);
         await saveSensorIndex(index);
         return newSensor;
     }
-
     return existing;
 }
 

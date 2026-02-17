@@ -28,6 +28,9 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### remove type from jsonl files
+- use type in sensor.json file
+- allow options to be added to sensor.json file
 
 ### refactor to use new data format 
 - Added home route
