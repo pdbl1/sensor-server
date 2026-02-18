@@ -1,6 +1,6 @@
 
 
-// dashboard.js
+// temp_disp.js
 let myChart = null; 
 const selector = document.getElementById('sensor-select');
 const container = document.getElementById('hd');
