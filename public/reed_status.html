@@ -32,10 +32,8 @@ async function loadStatus() {
     try {
         const res = await fetch("/api/reed-status");
         const data = await res.json();
-
         const tbody = document.querySelector("#statusTable tbody");
         tbody.innerHTML = "";
-
         data.zones.forEach(z => {
             const row = document.createElement("tr");
 
@@ -46,7 +44,6 @@ async function loadStatus() {
                     ${z.status ? 'OPEN' : 'CLOSED'}
                 </td>
             `;
-
             tbody.appendChild(row);
         });
 

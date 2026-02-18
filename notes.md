@@ -28,7 +28,8 @@ q: Quit and go back to the command line.
 
 ## versions
 
-
+### clean up
+- move to router / control 
 ### clean up ()
 ### misc fixes (bc97336)
 

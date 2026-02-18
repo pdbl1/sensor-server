@@ -1,5 +1,4 @@
 
-// reedEvents.js
 const express = require('express');
 const router = express.Router();
 const net = require('net');
@@ -8,6 +7,7 @@ const path = require('path');
 const { registerSensor } = require('../utils/utils');
 const { sanitizeTimestamp } = require('../utils/utils');
 const { trimFileToMax } = require('../utils/utils');
+const checkESP32Key = require('./authRoutes');
 
 /**
  * Expected JSON body example:
@@ -26,7 +26,7 @@ module.exports = function createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORD
     const reedTypes = ["reed"];
     let requestCount = 0;
 
-    router.post('/reed-event', async (req, res) => {
+    router.post('/reed-event', checkESP32Key, async (req, res) => {
 
         let { esp32, name, status, gpio, type, time: clientTimestamp } = req.body;
         // Validation

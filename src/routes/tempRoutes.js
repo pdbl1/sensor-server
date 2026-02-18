@@ -7,6 +7,7 @@ const path = require('path');
 const { registerSensor } = require('../utils/utils');
 const { sanitizeTimestamp } = require('../utils/utils');
 const { trimFileToMax } = require('../utils/utils');
+const checkESP32Key = require('./authRoutes');
 
 
 // These must be provided by index.js when mounting the router
@@ -18,7 +19,7 @@ module.exports = function createApiRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORDS
     /**
      * post data from a temperature device
      */
-    router.post('/temp1', async (req, res) => {
+    router.post('/temp1', checkESP32Key, async (req, res) => {
         requestCount++;
 
         let { esp32, name, temperature, type, address, time: clientTimestamp } = req.body;
