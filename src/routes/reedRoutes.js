@@ -97,7 +97,7 @@ module.exports = function createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORD
         }
     })
    
-    router.get('/reed-events', async (req, res) => {
+    router.get('/reed-display', async (req, res) => {
     try {
         const sensorRaw = req.query.sensor?.trim();
         const sensor = sensorRaw || "All"; // "" should also default to All
@@ -193,10 +193,11 @@ module.exports = function createReedRoutes({ DATA_DIR, MAX_FILE_SIZE, MAX_RECORD
     });
 
 
-    router.get('/reed/status', async (req, res) => {
+    router.get('/reed-status', async (req, res) => {
         try {
-            const data = await requestReedStatusFromEsp32();
-            res.json(JSON.parse(data));
+            const dataRaw = await requestReedStatusFromEsp32();
+            const data = JSON.parse(dataRaw);
+            res.json(data);
         } catch (err) {
             console.error("Error getting reed status:", err);
             res.status(500).json({ error: "Failed to get reed status" });

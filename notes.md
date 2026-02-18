@@ -28,7 +28,9 @@ q: Quit and go back to the command line.
 
 ## versions
 
-### remove type from jsonl files
+### misc fixes
+
+### remove type from jsonl files (af26c37)
 - use type in sensor.json file
 - allow options to be added to sensor.json file
 

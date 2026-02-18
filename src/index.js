@@ -6,8 +6,8 @@ require('dotenv').config();
 const fs = require('fs').promises;
 const path = require('path');
 const { json } = require('stream/consumers');
-const createApiRoutes = require('./routes/temp');
-const createReedRoutes = require('./routes/reedEvents');
+const createApiRoutes = require('./routes/tempRoutes');
+const createReedRoutes = require('./routes/reedRoutes');
 
 const app = express();
 const port = 8080;

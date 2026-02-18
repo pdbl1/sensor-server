@@ -30,7 +30,7 @@
 <script>
 async function loadStatus() {
     try {
-        const res = await fetch("/api/reed/status");
+        const res = await fetch("/api/reed-status");
         const data = await res.json();
 
         const tbody = document.querySelector("#statusTable tbody");

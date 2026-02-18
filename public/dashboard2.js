@@ -34,37 +34,37 @@ function changeUnits() {
 
 async function loadSensorList() {
     try {
-        // Fetch both sensors and names at the same time
-        const [sensorRes, namesRes] = await Promise.all([
-            fetch('/api/sensors1'),
-            //fetch('/api/names')
-        ]);
-
-        const sensors = await sensorRes.json();
-        //sensorNames = await namesRes.json(); // Store the names globally
-        
+        const sensorRes = await fetch('/api/sensors1');
+        const sensors = await sensorRes.json();      
         if (!Array.isArray(sensors) || sensors.length === 0) {
             selector.innerHTML = '<option>No sensors found</option>';
             return;
         }
-        // Build the dropdown using the fetched names
+        // Build dropdown
         selector.innerHTML = sensors.map(s => {
-            const sensorId = `${s.esp32}_${s.name}`;
             const friendlyName = `${s.esp32}: ${s.name}`;
-            return `<option value="${sensorId}">${friendlyName}</option>`;
+            return `<option value="${s.id}">${friendlyName}</option>`;
         }).join('');
-        //Handle persistence, set selected value and refresh plot
+        // Load saved selection
         const savedSensorId = localStorage.getItem('selectedSensor');
-        const match = sensors.find(v => v.id === savedSensorId);
-        if(savedSensorId && match) {
-            console.log(match);
-            refreshDashboard(savedSensorId);
+        // Check if saved ID still exists in the new list
+        const exists = sensors.some(s => s.id === savedSensorId);
+        let activeId;
+        if (savedSensorId && exists) {
+            activeId = savedSensorId;
         } else {
-            refreshDashboard(sensors[0].id);
+            // Fallback to first sensor
+            activeId = sensors[0].id;
+            localStorage.setItem('selectedSensor', activeId);
         }
+        // Explicitly set the dropdown value
+        selector.value = activeId;
+        // Refresh dashboard
+        refreshDashboard(activeId);
     } catch (err) {
         console.error("Error loading initialization data:", err);
     }
+
 }
 selector.addEventListener('change', (e) =>{
     const selectedId = e.target.value;
