@@ -1,5 +1,5 @@
 
-
+const logger = require('../utils/logging');
 
 // accessMap.js
 const accessMap = {
@@ -17,10 +17,11 @@ const accessMap = {
     "/sensors/api/reed-status":  { user: 1, methods: ["get"] },
 
     // --- Static HTML pages (session required) ---
-    "/sensors/home.htm":        { user: 1 },
-    "/sensors/reed.html":        { user: 1 },
-    "/sensors/temp.html":        { user: 1 },
-    "/sensors/temp_display.html":        { user: 1 },
+    "/sensors/home.htm":            { public: true },
+    "/sensors/reed.html":           { user: 1 },
+    "/sensors/temp.html":           { user: 1 },
+    "/sensors/temp_display.html":   { user: 1 },
+    "/sensors/reed_status.html":    {user: 1},
 
     // --- Public routes ---
     "/sensors/login":            { public: true },
@@ -33,25 +34,41 @@ const accessMap = {
 };
 
 //const allowRegex = /^(\/css|\/js|\/media|\/favicon|\/login|\/logout|\/home|\/uploads|\/receipts|\/\.well-known)/;
-const allowRegex = /^\/sensors\/.*\.(js|css|png|jpg|svg|html|htm)$/;
+const allowRegex = /^\/sensors\/.*\.(js|css|png|jpg|svg)$/;
+const esp32FirmWare = /^\/sensors\/[^\/]+\.bin$/;
 exports.unifiedAuth = function (req, res, next) {
     const path = req.baseUrl + req.path;
     const rule = accessMap[path];
-    console.log(`path ${req.baseUrl}--${req.path} `);
-    
+    logger.verbose(`Auth validation for: ${path}`);
+    //allow static files in public directory
     if (allowRegex.test(req.path)) {
         return next();
+    }
+    //allow esp32 to get firmware updates
+    if (esp32FirmWare.test(req.path)){
+        const key = req.get("Api-Key");
+        if (!key || key !== process.env.DEVICE_ESP32_KEY) {
+            logger.warn(`ESP32 firmwae auth failed for ${path}; key: ${key}`);
+            //comment out this line to allow firmware updated without validation
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        logger.verbose(`ESP32 firmware validation Path: ${path}; key: ${key}`);
+        return next();
+    }
+    //refresh session expiration so admin stays logged in (session will expire if more than 30 days since last access)
+    if (req.session.level === 5) {  // admin
+        req.session.touch(); // refresh expiration
     }
  
     // No rule → 404
     if (!rule) {
-        console.warn(`404 Not Found (missing in accessMap): ${path}`);
+        logger.warn(`404 Not Found (missing in accessMap): ${path}`);
         return res.status(404).send(`Not Found: ${path}`);
     }
 
     // Method not allowed
     if (rule.methods && !rule.methods.includes(req.method.toLowerCase())) {
-        console.warn(`405 Method Not Allowed: ${req.method} ${path}`);
+        logger.warn(`405 Method Not Allowed: ${req.method} ${path}`);
         return res.status(405).send(`Method Not Allowed: ${req.method}`);
     }
 
@@ -63,8 +80,9 @@ exports.unifiedAuth = function (req, res, next) {
     // ESP32 route
     if (rule.esp32) {
         const key = req.get("Api-Key");
+        //logger.verbose("Provided Key: ", key);
         if (!key || key !== process.env.DEVICE_ESP32_KEY) {
-            console.warn(`ESP32 auth failed for ${path}`);
+            logger.warn(`ESP32 auth failed for ${path}`);
             //return res.status(401).json({ error: "Unauthorized" });
         }
         return next();
@@ -79,14 +97,14 @@ exports.unifiedAuth = function (req, res, next) {
             return next();
         }
 
-        console.warn(`User auth failed for ${path} (level ${userLevel} < ${requiredLevel})`);
+        logger.warn(`User auth failed for ${path} (level ${userLevel} < ${requiredLevel})`);
         req.session.accessReqFrom = path;
 
         return res.redirect("/sensors/login");
     }
 
     // Should never reach here
-    console.error(`Invalid rule for ${path}`);
+    logger.error(`Invalid rule for ${path}`);
     return res.status(500).send("Server auth configuration error");
 };
 
@@ -112,22 +130,28 @@ exports.postLogin = (req, res, next) => {
         u.username === username && u.password === password
     );
     if (!auth) {
-        console.warn("Login failed:", username);
+        logger.warn("Login failed:", username);
         return res.redirect("/sensors/login?error=Invalid%20credentials");
     }
     // Regenerate session to prevent fixation
     req.session.regenerate(err => {
         if (err) {
-            console.error("Session regenerate error:", err);
+            logger.error("Session regenerate error:", err);
             return next(err);
+        }
+        if(username === "admin" ){  //persistant sessions for admin
+            req.session.cookie.expires = false; // no absolute expiration
+            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+            req.sessionStore.options.ttl = 30 * 24 * 60 * 60;     // 30 days
+
         }
         req.session.level = auth.level;
         req.session.save(err => {
             if (err) {
-                console.error("Session save error:", err);
+                logger.error("Session save error:", err);
                 return next(err);
             }
-            console.log("User logged in:", username, "level:", auth.level);
+            logger.log("User logged in:", username, "level:", auth.level);
             const redirectTo = req.session.accessReqFrom || "/sensors/home.htm";
 
             // If Android app logs in later:

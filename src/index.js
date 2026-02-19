@@ -13,6 +13,9 @@ const config = require('./config');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 const auth = require('./controllers/authCtl');
+const logger = require('./utils/logging');
+
+//logger.printTest();
 
 const app = express();
 const port = process.env.HTTPPORT;
@@ -22,6 +25,9 @@ const sessParam = {
         path: "./.sessions",
         retries: 1,
         ttl: 86400, // 1 day
+        reapInterval: 3600,      // cleanup every hour
+        reapAsync: true,
+        reapSyncFallback: true
     }),
     secret: process.env.SESSION_SECRET || "dev-secret-change-me",
     resave: false,
@@ -73,8 +79,8 @@ async function startServer() {
         //const httpsServer = https.createServer(httpsOpts, app);
 
         httpServer.listen(process.env.HTTPPORT, () => {
-            console.log(`HTTP Server listening on port: ${process.env.HTTPPORT}`);
-            console.log(`Data Path: ${config.DATA_DIR}`)
+            logger.log(`HTTP Server listening on port: ${process.env.HTTPPORT}`);
+            logger.log(`Data Path: ${config.DATA_DIR}`)
         });
 
         // httpsServer.listen(process.env.HTTPSPORT, () => {
@@ -82,8 +88,8 @@ async function startServer() {
         // });
 
     } catch (error) {
-        console.error("Failed to start server. Check certificate paths/permissions:");
-        console.error(error);
+        logger.error("Failed to start server. Check certificate paths/permissions:");
+        logger.error(error);
         process.exit(1); // Exit if we can't load SSL
     }
 }

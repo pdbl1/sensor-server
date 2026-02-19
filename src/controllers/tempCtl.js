@@ -4,6 +4,7 @@ const path = require('path');
 const sensorUtils = require('../utils/utils');
 //const checkESP32Key = require('./authRoutes');
 const config = require('../config');
+const logger = require('../utils/logging');
 
 
 let requestCount = 0;
@@ -18,25 +19,25 @@ exports.postTempEvent = async (req, res) => {
     let { esp32, name, temperature, type, address, time: clientTimestamp } = req.body;
     // Validation
     if (!esp32 || typeof esp32 !== 'string') {
-        console.log(`[400] Missing esp32 | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing esp32 | req#${requestCount} | body=`, req.body);
         return res.status(400).send('ESP32 device name required');
     }
     if (!name || typeof name !== 'string') {
-        console.log(`[400] Missing name | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing name | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Sensor name required');
     }
     if (temperature === undefined) {
-        console.log(`[400] Missing temperature | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing temperature | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Temperature required');
     }
     if (!type || typeof type !== 'string') {
-        console.log(`[400] Missing type | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing type | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Sensor type required');
     }
     if (!address || typeof address !== 'string') {
         address = "None";
     }
-    console.log(req.body);
+    logger.verbose(`Post temperature id: ${esp32}: ${name}; temp: ${temperature}`);
     const safeEsp32 = esp32.trim();
     const safeName = name.trim();
     // Register or load sensor metadata
@@ -57,14 +58,14 @@ exports.postTempEvent = async (req, res) => {
             v: temperature
         }) + '\n';
         await fs.appendFile(filePath, newRecord);
-        console.log(
+        logger.verbose(
             `${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${temperature}`
         );
         // Trim file if needed
         await sensorUtils.trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
         return res.sendStatus(200);
     } catch (err) {
-        console.log("Storage error:\n", err);
+        logger.warn("Storage error:\n", err);
         return res.status(500).send("Internal Server Error could not save file");
     }
 }
@@ -87,7 +88,7 @@ exports.getLastTemp = async (req, res) => {
         return res.json(lastEntry);
 
     } catch (err) {
-        console.log("get last error:\n", err);
+        logger.error("get last error:\n", err);
         return res.status(404).json({ error: "Sensor not found" });
     }
 };
@@ -100,7 +101,7 @@ exports.getTempSensors = async (req, res) => {
         const list = await sensorUtils.getSensorList(tempTypes);
         return res.json(list);
     } catch(err){
-        console.error("get sensors error:", err);
+        logger.error("get sensors error:", err);
         return res.status(500).json({ error: "Could not read sensor directory" });
     }
 }
@@ -109,11 +110,11 @@ exports.getTempSensors = async (req, res) => {
 exports.getHistory = async (req, res) => {
     const sensorId = req.query.id;
     if (sensorId === 'names') {
-        console.log("Invalid sensor ID");
+        logger.warn("Invalid sensor ID");
         return res.status(400).json({ error: "Invalid sensor ID" });
     }
     const filePath = path.join(config.DATA_DIR, `${sensorId}.jsonl`);
-    console.log(filePath);
+    logger.verbose(filePath);
     try {
         const rawData = await fs.readFile(filePath, 'utf-8');
         const data = rawData
@@ -124,7 +125,7 @@ exports.getHistory = async (req, res) => {
 
         return res.json(data);
     } catch (err) {
-        console.log("get history error:\n", err);
+        logger.error("get history error:\n", err);
         return res.status(404).json({ error: "Sensor not found" });
     }
 };

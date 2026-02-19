@@ -4,6 +4,7 @@ const path = require('path');
 const sensorUtils = require('../utils/utils');
 const { syncBuiltinESMExports } = require('module');
 const config = require('../config');
+const logger = require('../utils/logging');
 
 
 const ESP32_IP_ADDRESS = "192.168.50.112";
@@ -15,19 +16,19 @@ exports.postReedEvent = async (req, res) => {
     let { esp32, name, status, gpio, type, time: clientTimestamp } = req.body;
     // Validation
     if (!esp32 || typeof esp32 !== 'string') {
-        console.log(`[400] Missing esp32 | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing esp32 | req#${requestCount} | body=`, req.body);
         return res.status(400).send('ESP32 device name required');
     }
     if (!name || typeof name !== 'string') {
-        console.log(`[400] Missing name | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing name | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Sensor name required');
     }
     if (status === undefined) {
-        console.log(`[400] Missing status | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing status | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Status required');
     }
     if (gpio === undefined) {
-        console.log(`[400] Missing type | req#${requestCount} | body=`, req.body);
+        logger.warn(`[400] Missing type | req#${requestCount} | body=`, req.body);
         return res.status(400).send('Sensor gpio required');
     }
     const safeEsp32 = esp32.trim();
@@ -54,13 +55,13 @@ exports.postReedEvent = async (req, res) => {
         }) + '\n';
         // Append event
         await fs.appendFile(filePath, newRecord);
-        console.log(`${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${status ? 'CLOSED' : 'OPEN'}`);
+        logger.info(`${requestCount++} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${status ? 'CLOSED' : 'OPEN'}`);
         // Trim if needed
         await sensorUtils.trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
         return res.sendStatus(200);
 
     } catch (err) {
-        console.error("Reed event storage error:", err);
+        logger.error("Reed event storage error:", err);
         return res.status(500).json({ error: "Internal Server Error could not save file" });
     }
 }
@@ -72,10 +73,10 @@ exports.getReedSensors = async (req, res) => {
             id: 'All',
             displayName: 'All'
         };
-        const newList = [all, ...list];
+        const newList = [all, ...(list || [])];
         return res.json(newList);
     } catch(err){
-        console.error("get sensors error:", err);
+        logger.error("get sensors error:", err);
         return res.status(500).json({ error: "Could not read sensor directory" });
     }
 }
@@ -104,7 +105,7 @@ exports.getReedDisplay = async (req, res) => {
         if (sensor !== "All") {
             reedSensors = reedSensors.filter(s => s.id === sensor);
             if (reedSensors.length === 0) {
-                console.error(`No record for sensor ${sensor}`);
+                logger.error(`No record for sensor ${sensor}`);
                 return res.status(400).send(`Unknown sensor: ${sensor}`);
             }
         }
@@ -127,7 +128,7 @@ exports.getReedDisplay = async (req, res) => {
                 const last100 = events.slice(-numEvents);
                 allEvents.push(...last100);
             } catch (err) {
-                console.log(`Error reading ${file}:`, err);
+                logger.log(`Error reading ${file}:`, err);
             }
         }
         // Sort newest first
@@ -170,7 +171,7 @@ exports.getReedDisplay = async (req, res) => {
         return res.send(html);
 
     } catch (err) {
-        console.error("Error loading reed events:", err);
+        logger.error("Error loading reed events:", err);
         return res.status(500).send("Could not load reed events");
     }
 }
@@ -182,7 +183,7 @@ exports.getReedStatus = async (req, res) => {
         const data = JSON.parse(dataRaw);
         res.json(data);
     } catch (err) {
-        console.error("Error getting reed status:", err);
+        logger.error("Error getting reed status:", err);
         res.status(500).json({ error: "Failed to get reed status" });
     }
 }

@@ -28,6 +28,7 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### added logging
 ### added authentication
 ### clean up
 - move to router / control 
