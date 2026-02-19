@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadSensorList() {
-    const sensRes = await fetch('reed-sensors');
+    const sensRes = await fetch('/sensors/api/reed-sensors');
     const sensList = await sensRes.json();
     if(!Array.isArray(sensList) || sensList.length === 0){
         selector.innerHTML = '<option>No sensors found</option>';
@@ -40,7 +40,7 @@ async function loadSensorList() {
     }
     //build dropdown
     sensSel.innerHTML = sensList.map(el => {
-        return `<option value="${el.id}">${el.txt}</option>`;
+        return `<option value="${el.id}">${el.displayName}</option>`;
     }).join('');
     const savedSensorId = localStorage.getItem(KEY_SELECTED_REED);
     const exists = sensList.some(s => s.id === savedSensorId);

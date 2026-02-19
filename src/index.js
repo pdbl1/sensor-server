@@ -6,34 +6,52 @@ require('dotenv').config();
 const fs = require('fs').promises;
 const path = require('path');
 const { json } = require('stream/consumers');
-const createApiRoutes = require('./routes/tempRoutes');
-const createReedRoutes = require('./routes/reedRoutes');
 const reedRts = require('./routes/reedRts');
 const tempRts = require('./routes/tempRts');
+const authRts = require('./routes/authRts');
 const config = require('./config');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
+const auth = require('./controllers/authCtl');
 
 const app = express();
-const port = 8080;
+const port = process.env.HTTPPORT;
 
+const sessParam = {
+    store: new FileStore({
+        path: "./.sessions",
+        retries: 1,
+        ttl: 86400, // 1 day
+    }),
+    secret: process.env.SESSION_SECRET || "dev-secret-change-me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: true,          // requires HTTPS
+        sameSite: "lax",       // allows Android fetch() to send cookies
+        maxAge: 86400000       // 1 day
+    },
+    name: "SensorSess",
+    level: 0,
+}
+
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views")); 
+app.use(express.urlencoded({ extended: true }));
 // Middleware to parse JSON bodies sent by the ESP32
 app.use(express.json());
-app.use("/sensors/", express.static('public')); // Serve your HTML from a 'public' folder
-
-
-
+//allows express to trust the proxy, Caddy.
+app.set('trust proxy', true);
+app.use(session(sessParam));
+app.use(auth.unifiedAuth);
+app.use("/sensors/", express.static('public')); // Serve HTML from a 'public' folder
 //avoid caching files on cloudflare
-app.use(['/api', '/sensor'], (req, res, next) => {
+app.use(['/sensors/api', '/api', '/sensor'], (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
-const obj = {
-    DATA_DIR: config.DATA_DIR,
-    MAX_FILE_SIZE: config.MAX_FILE_SIZE,
-    MAX_RECORDS: config.MAX_RECORDS
-}
-//app.use(['/sensors/api', '/api'], createApiRoutes(obj));
-//app.use('/api', reedEvents);
-//app.use(['/sensors/api', '/api'], createReedRoutes(obj));
+app.use(['/sensors', '/sensors/api'], authRts);
 app.use(['/sensors/api', '/api'], reedRts);
 app.use(['/sensors/api', '/api'], tempRts);
 

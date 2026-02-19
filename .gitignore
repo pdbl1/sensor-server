@@ -16,6 +16,8 @@ public/TempSensor.bin
 # --- DATA FOLDER LOGIC ---
 # 1. Ignore the entire data directory
 data/
+.sessions/
+sessions/
 
 # 2. But allow the data directory to be scanned (required for negation)
 !data/

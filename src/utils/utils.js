@@ -1,12 +1,14 @@
 const fs = require('fs/promises');
 const path = require('path');
+const config = require('../config');
+const { error } = require('console');
 
 //we are inside the util directory here
-const DATA_DIR = path.join(__dirname, './../../', 'data');
+//const DATA_DIR = path.join(__dirname, './../../', 'data');
 
 async function loadSensorIndex() {
     try {
-        const raw = await fs.readFile(path.join(DATA_DIR, "sensors.json"), "utf8");
+        const raw = await fs.readFile(path.join(config.DATA_DIR, "sensors.json"), "utf8");
         let index = JSON.parse(raw);
         return index;
     } catch (err) {
@@ -17,7 +19,7 @@ async function loadSensorIndex() {
 
 async function saveSensorIndex(index) {
     await fs.writeFile(
-        path.join(DATA_DIR, "sensors.json"),
+        path.join(config.DATA_DIR, "sensors.json"),
         JSON.stringify(index, null, 2)
     );
 }
@@ -34,6 +36,24 @@ async function registerSensor({ esp32, name, type, options ={} }) {
         return newSensor;
     }
     return existing;
+}
+
+async function getSensorList(types) {
+    try{
+        if (!Array.isArray(types) || types.length === 0) {
+            throw new Error("types must be a non-empty array");
+        }
+        const filePath = path.join(config.DATA_DIR, `sensors.json`);
+        const raw = await fs.readFile(filePath, 'utf-8');
+        const list = JSON.parse(raw);
+        //add display name
+        const sensorList = list.filter(el => types.includes(el.type.toLowerCase()))
+                            .map(el => ({displayName:`${el.esp32}: ${el.name} (${el.type})`, ...el}));
+        return sensorList;
+    } catch (err) {
+        throw err;
+    }
+
 }
 
 // ------------------------------
@@ -84,5 +104,6 @@ module.exports = {
     saveSensorIndex,
     registerSensor,
     sanitizeTimestamp,
-    trimFileToMax
+    trimFileToMax,
+    getSensorList
 };

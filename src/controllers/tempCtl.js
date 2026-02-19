@@ -1,9 +1,7 @@
 
 const fs = require('fs/promises');
 const path = require('path');
-const { registerSensor } = require('../utils/utils');
-const { sanitizeTimestamp } = require('../utils/utils');
-const { trimFileToMax } = require('../utils/utils');
+const sensorUtils = require('../utils/utils');
 //const checkESP32Key = require('./authRoutes');
 const config = require('../config');
 
@@ -42,7 +40,7 @@ exports.postTempEvent = async (req, res) => {
     const safeEsp32 = esp32.trim();
     const safeName = name.trim();
     // Register or load sensor metadata
-    const sensorMeta = await registerSensor({
+    const sensorMeta = await sensorUtils.registerSensor({
         esp32: safeEsp32,
         name: safeName,
         type,
@@ -52,7 +50,7 @@ exports.postTempEvent = async (req, res) => {
     });
     const filePath = path.join(config.DATA_DIR, sensorMeta.file);
     // Timestamp sanitization
-    const { timestamp: finalTimestamp, source: sourceStr } = sanitizeTimestamp(clientTimestamp);
+    const { timestamp: finalTimestamp, source: sourceStr } = sensorUtils.sanitizeTimestamp(clientTimestamp);
     try {
         const newRecord = JSON.stringify({
             t: finalTimestamp,
@@ -63,7 +61,7 @@ exports.postTempEvent = async (req, res) => {
             `${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${temperature}`
         );
         // Trim file if needed
-        await trimFileToMax(filePath, MAX_FILE_SIZE, MAX_RECORDS);
+        await sensorUtils.trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
         return res.sendStatus(200);
     } catch (err) {
         console.log("Storage error:\n", err);
@@ -94,21 +92,18 @@ exports.getLastTemp = async (req, res) => {
     }
 };
 
-/**
+/** 
  * return the sensors.json file list
  */
-exports.getSensorList = async (req, res) => {
-    try {
-        const sensorsPath = path.join(config.DATA_DIR, `sensors.json`);
-        const sensorListText = await fs.readFile(sensorsPath, "utf-8");
-        const sensorList = JSON.parse(sensorListText);
-        const tempSensorList = sensorList.filter(e => tempTypes.includes(e.type.toLowerCase()));
-        return res.json(tempSensorList);
-    } catch (err) {
+exports.getTempSensors = async (req, res) => {
+    try{
+        const list = await sensorUtils.getSensorList(tempTypes);
+        return res.json(list);
+    } catch(err){
         console.error("get sensors error:", err);
         return res.status(500).json({ error: "Could not read sensor directory" });
     }
-};
+}
 
 // GET /api/history?id=xxxx
 exports.getHistory = async (req, res) => {

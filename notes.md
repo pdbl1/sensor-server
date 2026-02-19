@@ -28,9 +28,11 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### added authentication
 ### clean up
 - move to router / control 
 ### clean up ()
+- move all globals to config.js
 ### misc fixes (bc97336)
 
 ### remove type from jsonl files (af26c37)

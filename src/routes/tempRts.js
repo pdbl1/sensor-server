@@ -3,12 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const reedCtl = require('../controllers/reedCtl');
-const checkESP32Key = require('./authRoutes');
 const tempCtl = require('../controllers/tempCtl');
 
-router.post('/temp1', checkESP32Key, tempCtl.postTempEvent);
+router.post('/temp1', tempCtl.postTempEvent);
 router.get('last', tempCtl.getLastTemp);
-router.get('/sensors1', tempCtl.getSensorList);
+router.get('/sensors1', tempCtl.getTempSensors);
 router.get('/history1', tempCtl.getHistory);
 
 

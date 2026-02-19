@@ -34,7 +34,7 @@ function changeUnits() {
 
 async function loadSensorList() {
     try {
-        const sensorRes = await fetch('/api/sensors1');
+        const sensorRes = await fetch('/sensors/api/sensors1');
         const sensors = await sensorRes.json();      
         if (!Array.isArray(sensors) || sensors.length === 0) {
             selector.innerHTML = '<option>No sensors found</option>';
@@ -42,8 +42,7 @@ async function loadSensorList() {
         }
         // Build dropdown
         selector.innerHTML = sensors.map(s => {
-            const friendlyName = `${s.esp32}: ${s.name}`;
-            return `<option value="${s.id}">${friendlyName}</option>`;
+            return `<option value="${s.id}">${s.displayName}</option>`;
         }).join('');
         // Load saved selection
         const savedSensorId = localStorage.getItem('selectedSensor');
@@ -85,8 +84,8 @@ window.onload = init;
 
 async function refreshDashboardScatter(sensorId) {
     try {
-        console.log(`/api/history1?id=${sensorId}`);
-        const response = await fetch(`/api/history1?id=${sensorId}`);
+        console.log(`/sensors/api/history1?id=${sensorId}`);
+        const response = await fetch(`/sensors/api/history1?id=${sensorId}`);
         const data = await response.json();
 
         // Get the name from our global sensorNames object

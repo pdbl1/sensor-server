@@ -1,9 +1,7 @@
 const net = require('net');
 const fs = require('fs/promises');
 const path = require('path');
-const { registerSensor } = require('../utils/utils');
-const { sanitizeTimestamp } = require('../utils/utils');
-const { trimFileToMax } = require('../utils/utils');
+const sensorUtils = require('../utils/utils');
 const { syncBuiltinESMExports } = require('module');
 const config = require('../config');
 
@@ -36,7 +34,7 @@ exports.postReedEvent = async (req, res) => {
     const safeName = name.trim();
     const key = `${safeEsp32}_${safeName}`;
     // Register or load sensor metadata
-    const sensorMeta = await registerSensor({
+    const sensorMeta = await sensorUtils.registerSensor({
         esp32: safeEsp32,
         name: safeName,
         type,
@@ -46,7 +44,7 @@ exports.postReedEvent = async (req, res) => {
     });
     const filePath = path.join(config.DATA_DIR, sensorMeta.file);
     // Timestamp sanitization
-    const { timestamp: finalTimestamp, source: sourceStr } = sanitizeTimestamp(clientTimestamp);
+    const { timestamp: finalTimestamp, source: sourceStr } = sensorUtils.sanitizeTimestamp(clientTimestamp);
 
     try {
         const newRecord = JSON.stringify( {
@@ -58,7 +56,7 @@ exports.postReedEvent = async (req, res) => {
         await fs.appendFile(filePath, newRecord);
         console.log(`${requestCount} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${status ? 'CLOSED' : 'OPEN'}`);
         // Trim if needed
-        await trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
+        await sensorUtils.trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
         return res.sendStatus(200);
 
     } catch (err) {
@@ -68,18 +66,17 @@ exports.postReedEvent = async (req, res) => {
 }
 
 exports.getReedSensors = async (req, res) => {
-    try {
-        // Load sensors.json
-        const raw = await fs.readFile(path.join(config.DATA_DIR, "sensors.json"), "utf8");
-        const sensorList = JSON.parse(raw); 
-        const reedSensors = sensorList.filter(s => reedTypes.includes(s.type.toLowerCase()));
-        const optList = [ {id: "All", txt: "All"}, 
-            ...reedSensors.map(el => ({id: el.id, txt: `${el.esp32}: ${el.name}`}))
-        ];
-        return res.json(optList);
+    try{
+        const list = await sensorUtils.getSensorList(reedTypes);
+        const all = {
+            id: 'All',
+            displayName: 'All'
+        };
+        const newList = [all, ...list];
+        return res.json(newList);
     } catch(err){
-        console.error("Unable to read sensor list:", err);
-        return res.status(500).json({ error: "Internal Server Error could not sensor list" });
+        console.error("get sensors error:", err);
+        return res.status(500).json({ error: "Could not read sensor directory" });
     }
 }
 
