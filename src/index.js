@@ -57,7 +57,7 @@ app.use(['/sensors/api', '/api', '/sensor'], (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
-app.use(['/sensors', '/sensors/api'], authRts);
+app.use(['/sensors'], authRts);
 app.use(['/sensors/api', '/api'], reedRts);
 app.use(['/sensors/api', '/api'], tempRts);
 

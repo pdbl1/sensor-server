@@ -37,7 +37,7 @@ exports.postTempEvent = async (req, res) => {
     if (!address || typeof address !== 'string') {
         address = "None";
     }
-    logger.verbose(`Post temperature id: ${esp32}: ${name}; temp: ${temperature}`);
+    //logger.verbose(`Post temperature id: ${esp32}: ${name}; temp: ${temperature}`);
     const safeEsp32 = esp32.trim();
     const safeName = name.trim();
     // Register or load sensor metadata

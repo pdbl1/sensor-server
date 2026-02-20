@@ -58,7 +58,9 @@ exports.postReedEvent = async (req, res) => {
         logger.info(`${requestCount++} ${sourceStr}${req.protocol}: Appended: [${finalTimestamp}] ${sensorMeta.id} ${status ? 'CLOSED' : 'OPEN'}`);
         // Trim if needed
         await sensorUtils.trimFileToMax(filePath, config.MAX_FILE_SIZE, config.MAX_RECORDS);
-        return res.sendStatus(200);
+        const resp = {success: true, reedEvt: status};
+        return res.json(resp);
+        //return res.sendStatus(200);
 
     } catch (err) {
         logger.error("Reed event storage error:", err);

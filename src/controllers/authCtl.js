@@ -6,6 +6,7 @@ const accessMap = {
     // --- ESP32 ingestion routes ---
     "/sensors/api/temp1":        { esp32: true,  methods: ["post"] },
     "/sensors/api/reed-event":   { esp32: true,  methods: ["post"] },
+    "/sensors/api/register":    {esp32: true, methods: ['post']},
 
     // --- Browser API routes (session required) ---
     "/sensors/api/last":         { user: 1, methods: ["get"] },
@@ -39,7 +40,9 @@ const esp32FirmWare = /^\/sensors\/[^\/]+\.bin$/;
 exports.unifiedAuth = function (req, res, next) {
     const path = req.baseUrl + req.path;
     const rule = accessMap[path];
-    logger.verbose(`Auth validation for: ${path}`);
+    //logger.verbose(`Auth validation for: ${path}`);
+    //logger.verbose(`Method: ${req.method}`);
+    //logger.verbose(`Rule: ${JSON.stringify(rule)}`);
     //allow static files in public directory
     if (allowRegex.test(req.path)) {
         return next();
@@ -169,3 +172,10 @@ exports.logout = (req, res) => {
         res.redirect("/sensors/login");
     });
 };
+
+exports.registerEsp32 = (req, res) => {
+    //const data = JSON.parse(req.body);
+    logger.info(`Registration body ${JSON.stringify(req.body)}`);
+    const response = {register: true};
+    return res.json(response);
+}
