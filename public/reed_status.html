@@ -26,6 +26,17 @@
     </thead>
     <tbody></tbody>
 </table>
+<h2>Temperatures</h2>
+<table id="tempTable">
+    <thead>
+        <tr>
+            <th>Esp32</th>
+            <th>Name</th>
+            <th>Temperature</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
 <button id="homeBtn" onclick="window.location.href='/sensors/home.htm'" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
        Home
     </button>
@@ -36,7 +47,7 @@ async function loadStatus() {
         const data = await res.json();
         const tbody = document.querySelector("#statusTable tbody");
         tbody.innerHTML = "";
-        data.forEach(z => {
+        data.combined.reed.forEach(z => {
             const row = document.createElement("tr");
 
             row.innerHTML = `
@@ -48,6 +59,17 @@ async function loadStatus() {
             `;
             tbody.appendChild(row);
         });
+        const tmpBody = document.querySelector('#tempTable tbody');
+        tmpBody.innerHTML = "";
+        data.combined.temp.forEach(t => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${t.esp32}</td>
+                <td>${t.name}</td>
+                <td>${t.temp}</td>
+            `;
+            tmpBody.appendChild(row);
+        })
 
     } catch (err) {
         console.error("Failed to load status", err);

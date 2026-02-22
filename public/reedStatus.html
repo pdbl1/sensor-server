@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reed Switch Status</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        table { border-collapse: collapse; width: 400px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #eee; }
+        .closed { color: green; font-weight: bold; }
+        .open { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h2>ESP32 Status Updates</h2>
+
+<div id="tables"></div>
+
+
+<button id="homeBtn" onclick="window.location.href='/sensors/home.htm'" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
+       Home
+    </button>
+<br>
+
+<script>
+function buildTable(headers, rows, options = {}) {
+    const {
+        tableClass = "",
+        headerClass = "",
+        headerCellClass = "",
+        rowClass = "",
+        cellClass = "",
+        columnClasses = [],
+        cellClassCallback = null
+    } = options;
+    const table = document.createElement("table");
+    if (tableClass) table.className = tableClass;
+    // THEAD
+    const thead = document.createElement("thead");
+    const trHead = document.createElement("tr");
+    if (headerClass) trHead.className = headerClass;
+    headers.forEach((h, colIndex) => {
+        const th = document.createElement("th");
+        if (headerCellClass) th.classList.add(headerCellClass);
+        if (columnClasses[colIndex]) th.classList.add(columnClasses[colIndex]);
+        th.textContent = h;
+        trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+    // TBODY
+    const tbody = document.createElement("tbody");
+    rows.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        if (rowClass) tr.className = rowClass;
+        row.forEach((cell, colIndex) => {
+            const td = document.createElement("td");
+            // base class
+            if (cellClass) td.classList.add(cellClass);
+            // column class
+            if (columnClasses[colIndex]) td.classList.add(columnClasses[colIndex]);
+            // dynamic class
+            if (cellClassCallback) {
+                const dynClass = cellClassCallback(cell, rowIndex, colIndex);
+                if (dynClass) td.classList.add(dynClass);
+            }
+            td.textContent = cell;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return table;
+}
+
+async function loadStatus() {
+    try {
+        const res = await fetch("/sensors/api/reed-status");
+        const data = await res.json();
+        const div = document.getElementById('tables');
+        //console.log(`Data: ${JSON.stringify(data)}`);
+        data.nodes.forEach(dev =>{
+            //build the reed table
+            if(dev.reedZones && dev.reedZones.length > 0){
+                const t1 = document.createElement("h2");
+                t1.innerHTML = `ESP32: ${dev.esp32} REED Zones`;
+                div.appendChild(t1);
+                const header = ['Name', 'GPIO', 'Status'];
+                const data = [];
+                dev.reedZones.forEach(el =>{
+                    data.push([`${el.esp32}: ${el.name}`, el.gpio, el.status ? "OPEN":"CLOSED"]);
+                })
+                const table = buildTable(header, data, {
+                    cellClassCallback: (value, rowIndex, colIndex) => {
+                        if (colIndex === 2) {  // Status column
+                            return value === "OPEN" ? "open" : "closed";
+                        }
+                        return null;
+                    }
+                });
+                div.appendChild(table);
+            }
+            //build the temperature table
+            if(dev.tempZones && dev.tempZones.length > 0) {
+                const t1 = document.createElement('h2');
+                t1.innerHTML = `ESP32: ${dev.esp32} Temperatures Zones`;
+                div.appendChild(t1);
+                const header = ['Name', 'Temperature'];
+                const data = [];
+                dev.tempZones.forEach(el => {
+                    const tmpF = parseFloat(el.temp) *9/5 +32;
+                    data.push([`${el.esp32}: ${el.name}`, tmpF.toFixed(2) + ' degF']);
+                });
+                div.appendChild(buildTable(header, data));
+            }
+        })
+    } catch (err) {
+        console.error("Failed to load status", err);
+    }
+}
+
+// Load immediately
+loadStatus();
+
+// Refresh every 2 seconds
+//setInterval(loadStatus, 5000);
+</script>
+
+</body>
+</html>

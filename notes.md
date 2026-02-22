@@ -28,6 +28,11 @@ q: Quit and go back to the command line.
 
 ## versions
 
+### add immediate read for temp
+- reed_status.html is obsolete
+- add reedStatus.html to display status of all sensors on all esp32
+- modifed reedCtl getReedStatus to query each esp32 and send sensor data upon get request
+
 ### added logging and registration route
 - add home routes to webpages
 ### added authentication

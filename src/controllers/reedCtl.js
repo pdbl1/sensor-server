@@ -211,18 +211,38 @@ exports.getReedStatus = async (req, res) => {
     try {
         const allZones = await Promise.all(
             nodes.map(async (node) => {
-                const dataRaw = await requestReedStatusFromEsp32(node.ip);
+                const dataRaw = await requestReedStatusFromEsp32(node.ip, "reed_status\n");
+                const tempRaw = await requestReedStatusFromEsp32(node.ip, "ds18b20_read\n");
                 const data = JSON.parse(dataRaw);
-                logger.log(`data from ${node.ip}: ${JSON.stringify(data.zones)}`);
-                return data.zones;   // return array of zones
+                const temp = JSON.parse(tempRaw);
+                logger.log(`reed data from ${node.ip}: ${JSON.stringify(data.zones)}`);
+                logger.log(`temp data from ${node.ip}: ${JSON.stringify(temp.zones)}`);
+                return {
+                    ip: node.ip, 
+                    esp32: node.esp32,
+                    reedZones: data.zones,   // return array of zones
+                    tempZones: temp.zones,
+                };
             })
         );
-
+  
         // flatten arrays
-        const zones = allZones.flat();
+        const allReed = allZones.flatMap(d => d.reedZones);
+        const allTemp = allZones.flatMap(d => d.tempZones);
+        //logger.log(`allZones: ${JSON.stringify(allZones)}`)
+        //const zones = allZones.flat();
+        //logger.log(`Reed zones: ${JSON.stringify(allReed)}`)
+        //logger.log(`Temp zones: ${JSON.stringify(allTemp)}`);
 
-        logger.log(`zones combined: ${JSON.stringify(zones)}`);
-        return res.json(zones);
+        const response = {
+            nodes: allZones,
+            combined: {
+                reed: allReed,
+                temp: allTemp
+            }
+        };
+        logger.log(`response ${JSON.stringify(response)}`)
+        return res.json(response);
 
     } catch (err) {
         logger.error("Error getting reed status:", err);
@@ -230,15 +250,15 @@ exports.getReedStatus = async (req, res) => {
     }
 };
 
+ 
 
-
-function requestReedStatusFromEsp32(ip) {
+function requestReedStatusFromEsp32(ip, cmd) {
     return new Promise((resolve, reject) => {
         const client = new net.Socket();
         let buffer = "";
                
         client.connect(3333, ip, () => {
-            client.write("reed_status\n");
+            client.write(cmd);
         });
 
         client.on("data", chunk => {

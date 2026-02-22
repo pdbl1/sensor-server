@@ -26,6 +26,7 @@ const accessMap = {
     "/sensors/temp.html":           { user: 1 },
     "/sensors/temp_display.html":   { user: 1 },
     "/sensors/reed_status.html":    {user: 1},
+    "/sensors/reedStatus.html":     {user: 1},
 
     // --- Public routes ---
     "/sensors/login":            { public: true },
