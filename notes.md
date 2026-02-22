@@ -29,6 +29,7 @@ q: Quit and go back to the command line.
 ## versions
 
 ### added logging and registration route
+- add home routes to webpages
 ### added authentication
 ### clean up
 - move to router / control 

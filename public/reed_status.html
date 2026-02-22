@@ -26,7 +26,9 @@
     </thead>
     <tbody></tbody>
 </table>
-
+<button id="homeBtn" onclick="window.location.href='/sensors/home.htm'" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
+       Home
+    </button>
 <script>
 async function loadStatus() {
     try {
@@ -34,7 +36,7 @@ async function loadStatus() {
         const data = await res.json();
         const tbody = document.querySelector("#statusTable tbody");
         tbody.innerHTML = "";
-        data.zones.forEach(z => {
+        data.forEach(z => {
             const row = document.createElement("tr");
 
             row.innerHTML = `
@@ -56,7 +58,7 @@ async function loadStatus() {
 loadStatus();
 
 // Refresh every 2 seconds
-setInterval(loadStatus, 2000);
+setInterval(loadStatus, 5000);
 </script>
 
 </body>

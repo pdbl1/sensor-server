@@ -1,5 +1,8 @@
-
+const fs = require('fs/promises');
+const path = require('path');
+const config = require('../config');
 const logger = require('../utils/logging');
+const nodemon = require('nodemon');
 
 // accessMap.js
 const accessMap = {
@@ -173,9 +176,38 @@ exports.logout = (req, res) => {
     });
 };
 
-exports.registerEsp32 = (req, res) => {
-    //const data = JSON.parse(req.body);
-    logger.info(`Registration body ${JSON.stringify(req.body)}`);
-    const response = {register: true};
-    return res.json(response);
+exports.registerEsp32 = async (req, res) => {
+    let {device_mac, esp32, ip} =  req.body;
+    if(!device_mac || typeof device_mac !== 'string'){
+        logger.warn(`[400] device mac address missing or invalid | body= ${JSON.stringify(req.body)}`);
+        return res.status(400).json({success: false, error: 'invalid mac'});
+    }
+    if (!esp32 || typeof esp32 !== 'string') {
+        logger.warn(`[400] Missing esp32 | body= ${JSON.stringify(req.body)}`);
+        return res.status(400).json({success: false, error: 'esp32 name missing or invaldi'});
+    }
+    if (!ip || typeof ip !== 'string') {
+        logger.warn(`[400] Missing ip | body= ${JSON.stringify(req.body)}`);
+        return res.status(400).json({success: false, error: 'ip missing or invaldi'});
+    }
+    const filePath = path.join(config.DATA_DIR, 'nodes.json');
+    // --- Load existing nodes ---
+    let nodes = [];
+    try {
+        const raw = await fs.readFile(filePath, 'utf-8');
+        nodes = JSON.parse(raw);
+        if (!Array.isArray(nodes)) nodes = [];
+    } catch (err) {
+        logger.warn(`nodes.json missing or unreadable, starting fresh`);
+        nodes = [];
+    }
+    // --- Remove any existing entry for this MAC ---
+    nodes = nodes.filter(n => n.device_mac !== device_mac);
+    // --- Add the new/updated node ---
+    const newNode = { device_mac, esp32, ip, last_seen: Date.now() };
+    nodes.push(newNode);
+    // --- Save file ---
+    await fs.writeFile(filePath, JSON.stringify(nodes, null, 2));
+    logger.info(`Registered ESP32 ${esp32} (${device_mac}) @ ${ip}`);
+    return res.json({ success: true });
 }

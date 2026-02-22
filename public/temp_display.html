@@ -36,14 +36,15 @@
     </div>
     <div id="hd" style="text-align: center;">Temperature History</div>
 
-    <div class="card">
-    <button onclick="toggleAdmin()">Toggle Name Editor</button>
-    
+ 
     <button id="units" onclick="changeUnits()" style="margin-top:10px; background: #28a745; color: white; border: none; padding: 10px;">
         Fahrenheit
     </button>
     <button id="resetBtn" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
         Reset View
+    </button>
+    <button id="homeBtn" onclick="window.location.href='/sensors/home.htm'" style="margin-top: 10px; padding: 5px 15px; cursor: pointer;">
+       Home
     </button>
 
     <script src="temp_disp.js"></script>

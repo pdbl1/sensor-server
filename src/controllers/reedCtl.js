@@ -5,6 +5,7 @@ const sensorUtils = require('../utils/utils');
 const { syncBuiltinESMExports } = require('module');
 const config = require('../config');
 const logger = require('../utils/logging');
+const e = require('express');
 
 
 const ESP32_IP_ADDRESS = "192.168.50.112";
@@ -154,6 +155,9 @@ exports.getReedDisplay = async (req, res) => {
                     <option value="All">All</option>
                 </select>
                 <button onclick="go()">Load</button>
+                <button id="homeBtn" onclick="window.location.href='/sensors/home.htm'">
+                    Home
+                </button>
                 <table>
                     <tr><th>Time</th><th>GPIO</th><th>Status</th><th>Sensor</th></tr>
                     ${allEvents.map(e => `
@@ -179,23 +183,61 @@ exports.getReedDisplay = async (req, res) => {
 }
 
 
+// exports.getReedStatus = async (req, res) => {
+//     nodes = await sensorUtils.getNodes();
+//     logger.log(`nodes: ${JSON.stringify(nodes, null, 2)}}`);
+//     let zones = [];
+//     if(nodes && nodes.length > 0) {
+//         nodes.forEach(async (el) => {
+//             try {
+//                 const dataRaw = await requestReedStatusFromEsp32(el.ip);
+//                 const data = JSON.parse(dataRaw);
+//                 logger.log(`data ${JSON.stringify(data.zones)}`);
+//                 data.zones.forEach(el => {zones.push(el)});
+//                 logger.log(`zones ${JSON.stringify(zones)}`);
+//             } catch (err) {
+//                 logger.error("Error getting reed status:", err);
+//                 res.status(500).json({ error: "Failed to get reed status" });
+//             }
+//         })
+//     }
+//     res.json(zones);
+// }
+
 exports.getReedStatus = async (req, res) => {
+    const nodes = await sensorUtils.getNodes();
+    logger.log(`nodes: ${JSON.stringify(nodes, null, 2)}`);
+
     try {
-        const dataRaw = await requestReedStatusFromEsp32();
-        const data = JSON.parse(dataRaw);
-        res.json(data);
+        const allZones = await Promise.all(
+            nodes.map(async (node) => {
+                const dataRaw = await requestReedStatusFromEsp32(node.ip);
+                const data = JSON.parse(dataRaw);
+                logger.log(`data from ${node.ip}: ${JSON.stringify(data.zones)}`);
+                return data.zones;   // return array of zones
+            })
+        );
+
+        // flatten arrays
+        const zones = allZones.flat();
+
+        logger.log(`zones combined: ${JSON.stringify(zones)}`);
+        return res.json(zones);
+
     } catch (err) {
         logger.error("Error getting reed status:", err);
-        res.status(500).json({ error: "Failed to get reed status" });
+        return res.status(500).json({ error: "Failed to get reed status" });
     }
-}
- 
-function requestReedStatusFromEsp32() {
+};
+
+
+
+function requestReedStatusFromEsp32(ip) {
     return new Promise((resolve, reject) => {
         const client = new net.Socket();
         let buffer = "";
-
-        client.connect(3333, ESP32_IP_ADDRESS, () => {
+               
+        client.connect(3333, ip, () => {
             client.write("reed_status\n");
         });
 

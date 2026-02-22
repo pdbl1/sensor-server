@@ -24,6 +24,12 @@ async function saveSensorIndex(index) {
     );
 }
 
+async function getNodes() {
+    const filePath = path.join(config.DATA_DIR, 'nodes.json');
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(raw);
+}
+
 async function registerSensor({ esp32, name, type, options ={} }) {
     const id = `${esp32}_${name}`;
     const file = `${id}.jsonl`;
@@ -105,5 +111,6 @@ module.exports = {
     registerSensor,
     sanitizeTimestamp,
     trimFileToMax,
-    getSensorList
+    getSensorList,
+    getNodes,
 };
