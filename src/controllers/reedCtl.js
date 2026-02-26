@@ -206,42 +206,44 @@ exports.getReedDisplay = async (req, res) => {
 
 exports.getReedStatus = async (req, res) => {
     const nodes = await sensorUtils.getNodes();
-    logger.log(`nodes: ${JSON.stringify(nodes, null, 2)}`);
-
+    //logger.log('nodes: ', nodes);
     try {
-        const allZones = await Promise.all(
+        const results = await Promise.allSettled(
             nodes.map(async (node) => {
-                const dataRaw = await requestReedStatusFromEsp32(node.ip, "reed_status\n");
-                const tempRaw = await requestReedStatusFromEsp32(node.ip, "ds18b20_read\n");
-                const data = JSON.parse(dataRaw);
-                const temp = JSON.parse(tempRaw);
-                logger.log(`reed data from ${node.ip}: ${JSON.stringify(data.zones)}`);
-                logger.log(`temp data from ${node.ip}: ${JSON.stringify(temp.zones)}`);
+                const reedP = await requestReedStatusFromEsp32(node.ip, "reed_status\n");
+                const tempP = await requestReedStatusFromEsp32(node.ip, "ds18b20_read\n");
+                const [reedRes, tempRes] = await Promise.allSettled([reedP, tempP]);
+                //logger.log('reedRes: ', reedRes);
+                const reedZones = reedRes.status === 'fulfilled' ? JSON.parse(reedRes.value).zones : [];
+                const tempZones = tempRes.status === 'fulfilled' ? JSON.parse(tempRes.value).zones : [];
+                //logger.log('***** reed zones:', reedZones);
                 return {
                     ip: node.ip, 
                     esp32: node.esp32,
-                    reedZones: data.zones,   // return array of zones
-                    tempZones: temp.zones,
+                    reedZones,
+                    tempZones,
+                    reedOk: reedRes.status === "fulfilled",
+                    tempOk: tempRes.status === "fulfilled",
                 };
             })
         );
-  
-        // flatten arrays
-        const allReed = allZones.flatMap(d => d.reedZones);
-        const allTemp = allZones.flatMap(d => d.tempZones);
-        //logger.log(`allZones: ${JSON.stringify(allZones)}`)
-        //const zones = allZones.flat();
-        //logger.log(`Reed zones: ${JSON.stringify(allReed)}`)
-        //logger.log(`Temp zones: ${JSON.stringify(allTemp)}`);
+        //logger.log('promise results: ',results);
+        // keep only successful nodes
+        const good = results
+            .filter(r => r.status === "fulfilled")
+            .map(r => r.value);
+        //logger.log('good results: ', good);
+        const allReed = good.flatMap(d => d.reedZones);
+        const allTemp = good.flatMap(d => d.tempZones);
 
         const response = {
-            nodes: allZones,
-            combined: {
-                reed: allReed,
-                temp: allTemp
-            }
+            nodes: good,
+            //combined: {
+            //    reed: allReed,
+            //    temp: allTemp
+            //}
         };
-        logger.log(`response ${JSON.stringify(response)}`)
+        logger.log('response: ',response);
         return res.json(response);
 
     } catch (err) {
@@ -256,7 +258,7 @@ function requestReedStatusFromEsp32(ip, cmd) {
     return new Promise((resolve, reject) => {
         const client = new net.Socket();
         let buffer = "";
-               
+        client.setTimeout(10 *1000);
         client.connect(3333, ip, () => {
             client.write(cmd);
         });
@@ -268,7 +270,10 @@ function requestReedStatusFromEsp32(ip, cmd) {
                 resolve(buffer.trim());
             }
         });
-
+        client.on("timeout", () => {
+            client.destroy();
+            reject(new Error("TCP request timed out"));
+        });
         client.on("error", reject);
         client.on("close", () => {});
     });

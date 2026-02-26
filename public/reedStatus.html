@@ -80,14 +80,15 @@ async function loadStatus() {
         const res = await fetch("/sensors/api/reed-status");
         const data = await res.json();
         const div = document.getElementById('tables');
-        //console.log(`Data: ${JSON.stringify(data)}`);
+        console.log('Data', data);
         data.nodes.forEach(dev =>{
             //build the reed table
+            //console.log('dev', dev);
             if(dev.reedZones && dev.reedZones.length > 0){
                 const t1 = document.createElement("h2");
                 t1.innerHTML = `ESP32: ${dev.esp32} REED Zones`;
                 div.appendChild(t1);
-                const header = ['Name', 'GPIO', 'Status'];
+                const header = [`Name (${dev.ip})`, 'GPIO', 'Status'];
                 const data = [];
                 dev.reedZones.forEach(el =>{
                     data.push([`${el.esp32}: ${el.name}`, el.gpio, el.status ? "OPEN":"CLOSED"]);
@@ -107,11 +108,11 @@ async function loadStatus() {
                 const t1 = document.createElement('h2');
                 t1.innerHTML = `ESP32: ${dev.esp32} Temperatures Zones`;
                 div.appendChild(t1);
-                const header = ['Name', 'Temperature'];
+                const header = [`Name (${dev.ip})`, 'Address', 'Temperature'];
                 const data = [];
                 dev.tempZones.forEach(el => {
                     const tmpF = parseFloat(el.temp) *9/5 +32;
-                    data.push([`${el.esp32}: ${el.name}`, tmpF.toFixed(2) + ' degF']);
+                    data.push([`${el.esp32}: ${el.name}`,el.addr, tmpF.toFixed(2) + ' degF']);
                 });
                 div.appendChild(buildTable(header, data));
             }

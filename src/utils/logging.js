@@ -1,5 +1,15 @@
 const fs = require('fs');
 const path = require('path');
+const util = require("util");
+
+// Enable custom colors
+//red, green, yellow, blue, magenta, cyan, white, gray
+util.inspect.styles.number = 'yellow';
+util.inspect.styles.string = 'blue';
+util.inspect.styles.name   = 'gray';   // keys
+util.inspect.styles.boolean = 'green';
+util.inspect.styles.null = 'red';
+util.inspect.styles.undefined = 'red';
 
 
 const lib = {};
@@ -134,20 +144,32 @@ lib.setLevel = (level) => {
 }
 /**
  * 
- * @param {msgFormat} delim specifies which message to pring
+ * @param {msgFormat} delim specifies which message to print
  * @param  {...any} msg list of strings to be printed
  * @returns formatted and concatenated strings
  */
 const combine = (msgType, ...msg) => {
-    var rtnStr = msgFormat[msgType].style + msgFormat[msgType].delim;
+    const fmtStart = msgFormat[msgType].style; 
+    var rtnStr = fmtStart + msgFormat[msgType].delim;
     space = '';
     msg.forEach(el => {
-        if(typeof el === 'object' && 'stack' in el){
-            if(rtnStr.charAt(rtnStr.length-1)!=='\n'){
-                rtnStr += '\n';
-            }
+        if(typeof el === 'object' && el !== null){
             rtnStr += end;
-            rtnStr += el.stack + msgFormat[msgType].style + '\n' ;
+            // Pretty-print objects like console.log
+            const pretty = util.inspect(el, {
+                        depth: null,
+                        colors: true,
+                        compact: true,
+                        breakLength: 120,
+                        maxArrayLength: null,
+                        maxStringLength: null
+                    });
+            if(rtnStr.charAt(rtnStr.length-1)!=='\n'){
+                rtnStr += space;
+            }
+            rtnStr += pretty + fmtStart;
+            //rtnStr += end;
+            //rtnStr += el.stack + msgFormat[msgType].style + '\n' ;
         } else {
             if(rtnStr.charAt(rtnStr.length-1)!=='\n'){
                 rtnStr += space;
@@ -158,6 +180,26 @@ const combine = (msgType, ...msg) => {
     });
     return rtnStr + end;
 };
+// const combine = (msgType, ...msg) => {
+//     var rtnStr = msgFormat[msgType].style + msgFormat[msgType].delim;
+//     space = '';
+//     msg.forEach(el => {
+//         if(typeof el === 'object' && 'stack' in el){
+//             if(rtnStr.charAt(rtnStr.length-1)!=='\n'){
+//                 rtnStr += '\n';
+//             }
+//             rtnStr += end;
+//             rtnStr += el.stack + msgFormat[msgType].style + '\n' ;
+//         } else {
+//             if(rtnStr.charAt(rtnStr.length-1)!=='\n'){
+//                 rtnStr += space;
+//             }
+//             rtnStr += el;
+//         }
+//         space = ' ';
+//     });
+//     return rtnStr + end;
+// };
 /**
  * Prints regardless of level
  * @param  {...any} msg 
